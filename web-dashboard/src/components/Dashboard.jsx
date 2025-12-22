@@ -97,31 +97,7 @@ export default function Dashboard() {
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Problems by Difficulty */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Problems by Difficulty</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {pieData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
+      <div className="grid grid-cols-1 gap-6">
         {/* Interview Performance Trend */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Interview Performance</h3>
@@ -181,9 +157,9 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Activity and Progress */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Activity Feed */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
             <Activity className="text-blue-500 mr-2" size={20} />
             Recent Activity
@@ -198,45 +174,6 @@ export default function Dashboard() {
               {activities.map((activity, idx) => (
                 <ActivityItem key={idx} activity={activity} />
               ))}
-            </div>
-          )}
-        </div>
-
-        {/* Progress Metrics */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <Zap className="text-yellow-500 mr-2" size={20} />
-            Current Progress
-          </h3>
-          {progressData ? (
-            <div className="space-y-4">
-              <ProgressMetric
-                label="Solved Today"
-                value={progressData.totalSolved || 0}
-                icon={<CheckCircle className="text-green-500" size={16} />}
-              />
-              <ProgressMetric
-                label="Current Streak"
-                value={`${progressData.streak || 0} days`}
-                icon={<TrendingUp className="text-blue-500" size={16} />}
-              />
-              <ProgressMetric
-                label="Efficiency Score"
-                value={`${Math.round(progressData.efficiency || 0)}/100`}
-                icon={<Brain className="text-purple-500" size={16} />}
-              />
-              <div className="pt-3 border-t border-gray-200">
-                <p className="text-xs text-gray-500">
-                  Last updated: {progressData.lastUpdated ? 
-                    new Date(progressData.lastUpdated).toLocaleString() : 
-                    'Never'
-                  }
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              <p>No progress data yet</p>
             </div>
           )}
         </div>
