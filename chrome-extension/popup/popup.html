@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cognify - AI Interview Mentor</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 400px;
+      min-height: 500px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+    }
+
+    .container {
+      background: white;
+      min-height: 500px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+      color: white;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      margin-bottom: 5px;
+    }
+
+    .header p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .content {
+      flex: 1;
+      padding: 20px;
+    }
+
+    .status-section {
+      background: #f8f9fa;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .status-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .status-label {
+      font-size: 14px;
+      color: #666;
+    }
+
+    .status-value {
+      font-weight: 600;
+      color: #667eea;
+    }
+
+    .mode-selector {
+      margin-bottom: 20px;
+    }
+
+    .mode-selector h3 {
+      font-size: 16px;
+      margin-bottom: 12px;
+      color: #333;
+    }
+
+    .mode-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 10px;
+      border: 2px solid #e0e0e0;
+      background: white;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .mode-btn:hover {
+      border-color: #667eea;
+      background: #f8f9ff;
+    }
+
+    .mode-btn.active {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+
+    .quick-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .quick-actions h3 {
+      font-size: 16px;
+      margin-bottom: 12px;
+      color: #333;
+    }
+
+    .action-btn {
+      width: 100%;
+      padding: 12px 16px;
+      background: white;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .action-btn:hover {
+      border-color: #667eea;
+      background: #f8f9ff;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(102, 126, 234, 0.1);
+    }
+
+    .action-icon {
+      font-size: 24px;
+    }
+
+    .action-text {
+      flex: 1;
+    }
+
+    .action-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: #333;
+      margin-bottom: 2px;
+    }
+
+    .action-desc {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .settings-link {
+      text-align: center;
+      padding: 16px;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .settings-link a {
+      color: #667eea;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .settings-link a:hover {
+      text-decoration: underline;
+    }
+
+    .warning {
+      background: #fff3cd;
+      border: 1px solid #ffeeba;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #856404;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🧠 Cognify</h1>
+      <p>AI Interview Mentor</p>
+    </div>
+
+    <div class="content">
+      <div id="warning" class="warning" style="display: none;">
+        ⚠️ Please configure your Gemini API key in settings.
+      </div>
+
+      <div class="status-section">
+        <div class="status-item">
+          <span class="status-label">Current Platform:</span>
+          <span class="status-value" id="currentPlatform">—</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Active Mode:</span>
+          <span class="status-value" id="activeMode">Practice</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Problems Today:</span>
+          <span class="status-value" id="problemsToday">0</span>
+        </div>
+      </div>
+
+      <div class="mode-selector">
+        <h3>Select Mode</h3>
+        <div class="mode-buttons">
+          <button class="mode-btn active" data-mode="practice">Practice</button>
+          <button class="mode-btn" data-mode="interview">Interview</button>
+          <button class="mode-btn" data-mode="learning">Learning</button>
+        </div>
+      </div>
+
+      <div class="quick-actions">
+        <h3>Quick Actions</h3>
+        
+        <button class="action-btn" id="openSidepanel">
+          <span class="action-icon">📊</span>
+          <div class="action-text">
+            <div class="action-title">Open Side Panel</div>
+            <div class="action-desc">View detailed analysis</div>
+          </div>
+        </button>
+
+        <button class="action-btn" id="openDashboard">
+          <span class="action-icon">📈</span>
+          <div class="action-text">
+            <div class="action-title">View Dashboard</div>
+            <div class="action-desc">Check your progress</div>
+          </div>
+        </button>
+
+        <button class="action-btn" id="openSettings">
+          <span class="action-icon">⚙️</span>
+          <div class="action-text">
+            <div class="action-title">Settings</div>
+            <div class="action-desc">Configure API & preferences</div>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <div class="settings-link">
+      <a href="#" id="helpLink">Need help? View Documentation</a>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

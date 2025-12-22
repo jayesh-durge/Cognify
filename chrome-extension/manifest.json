@@ -1,0 +1,84 @@
+{
+  "manifest_version": 3,
+  "name": "Cognify - AI Interview Mentor",
+  "version": "1.0.0",
+  "description": "AI-powered mentor for interview preparation. Learn problem-solving, not just solutions.",
+
+  "action": {
+    "default_popup": "popup/popup.html"
+  },
+
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
+  },
+
+  "options_page": "settings/settings.html",
+
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["*://*.leetcode.com/*"],
+      "js": ["content-scripts/leetcode.js"],
+      "css": ["content-scripts/styles/common.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.codechef.com/*"],
+      "js": ["content-scripts/codechef.js"],
+      "css": ["content-scripts/styles/common.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.codeforces.com/*"],
+      "js": ["content-scripts/codeforces.js"],
+      "css": ["content-scripts/styles/common.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.geeksforgeeks.org/*", "*://*.practice.geeksforgeeks.org/*"],
+      "js": ["content-scripts/geeksforgeeks.js"],
+      "css": ["content-scripts/styles/common.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["content-scripts/youtube.js"],
+      "css": ["content-scripts/styles/common.css"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting",
+    "sidePanel",
+    "activeTab"
+  ],
+
+  "host_permissions": [
+    "*://*.leetcode.com/*",
+    "*://*.codechef.com/*",
+    "*://*.codeforces.com/*",
+    "*://*.geeksforgeeks.org/*",
+    "*://*.youtube.com/*",
+    "https://generativelanguage.googleapis.com/*"
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "sidepanel/sidepanel.html"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}

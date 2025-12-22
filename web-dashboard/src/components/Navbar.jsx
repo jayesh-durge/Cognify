@@ -1,0 +1,88 @@
+import React from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import { LogOut, Settings, BarChart3 } from 'lucide-react'
+
+export default function Navbar() {
+  const { user, signOut } = useAuth()
+  const navigate = useNavigate()
+
+  const handleSignOut = async () => {
+    await signOut()
+    navigate('/login')
+  }
+
+  return (
+    <nav className="bg-white shadow-sm border-b border-gray-200">
+      <div className="container mx-auto px-4 max-w-7xl">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <Link to="/" className="flex items-center space-x-2">
+            <div className="text-3xl">🧠</div>
+            <span className="text-xl font-bold bg-gradient-to-r from-primary-500 to-purple-500 bg-clip-text text-transparent">
+              Cognify
+            </span>
+          </Link>
+
+          {/* Navigation Links */}
+          <div className="hidden md:flex items-center space-x-8">
+            <NavLink to="/dashboard" icon={<BarChart3 size={18} />}>
+              Dashboard
+            </NavLink>
+            <NavLink to="/interviews">
+              Interviews
+            </NavLink>
+            <NavLink to="/progress">
+              Progress
+            </NavLink>
+            <NavLink to="/recommendations">
+              Recommendations
+            </NavLink>
+          </div>
+
+          {/* User Menu */}
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
+              <img
+                src={user?.photoURL || '/default-avatar.png'}
+                alt={user?.displayName || 'User'}
+                className="w-8 h-8 rounded-full"
+              />
+              <span className="hidden md:block text-sm font-medium text-gray-700">
+                {user?.displayName}
+              </span>
+            </div>
+
+            <Link
+              to="/settings"
+              className="p-2 text-gray-600 hover:text-primary-500 transition-colors"
+              title="Settings"
+            >
+              <Settings size={20} />
+            </Link>
+
+            <button
+              onClick={handleSignOut}
+              className="p-2 text-gray-600 hover:text-red-500 transition-colors"
+              title="Sign Out"
+            >
+              <LogOut size={20} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </nav>
+  )
+}
+
+function NavLink({ to, children, icon }) {
+  return (
+    <Link
+      to={to}
+      className="flex items-center space-x-1 text-gray-700 hover:text-primary-500 font-medium transition-colors"
+    >
+      {icon}
+      <span>{children}</span>
+    </Link>
+  )
+}

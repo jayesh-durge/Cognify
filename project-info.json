@@ -1,0 +1,28 @@
+{
+  "name": "Cognify Project",
+  "description": "Complete AI Interview Mentor - Chrome Extension + Web Dashboard",
+  "version": "1.0.0",
+  "directories": {
+    "chrome-extension": "Chrome Extension (Manifest V3)",
+    "web-dashboard": "React Dashboard with Firebase"
+  },
+  "setup_instructions": {
+    "extension": "See QUICKSTART.md - Load unpacked in chrome://extensions/",
+    "dashboard": "cd web-dashboard && npm install && npm run dev"
+  },
+  "required_apis": {
+    "gemini": "https://aistudio.google.com/app/apikey",
+    "firebase": "https://console.firebase.google.com"
+  },
+  "supported_platforms": [
+    "LeetCode",
+    "CodeChef",
+    "Codeforces",
+    "GeeksforGeeks",
+    "YouTube"
+  ],
+  "tech_stack": {
+    "extension": ["Manifest V3", "Vanilla JS", "Chrome APIs", "Gemini API"],
+    "dashboard": ["React 18", "Vite", "Tailwind CSS", "Firebase", "Recharts"]
+  }
+}

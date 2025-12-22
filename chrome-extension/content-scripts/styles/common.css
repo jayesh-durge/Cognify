@@ -1,0 +1,523 @@
+/**
+ * Shared CSS styles for content scripts across all platforms
+ */
+
+/* Mentor Panel - Floating Widget */
+#cognify-mentor-panel {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 380px;
+  max-height: 600px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  z-index: 999999;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  transition: all 0.3s ease;
+}
+
+#cognify-mentor-panel.minimized {
+  max-height: 50px;
+  overflow: hidden;
+}
+
+.cognify-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  color: white;
+}
+
+.cognify-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 16px 16px 0 0;
+  cursor: move;
+}
+
+.cognify-logo {
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cognify-minimize {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  transition: background 0.2s;
+}
+
+.cognify-minimize:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.cognify-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Mode Selector */
+.cognify-mode-selector {
+  display: flex;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.mode-btn.active {
+  background: white;
+  color: #667eea;
+}
+
+.mode-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Status Display */
+.cognify-status {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.status-text strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+/* Chat Interface */
+.cognify-chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 200px;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  max-height: 250px;
+}
+
+.message {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-user {
+  background: rgba(255, 255, 255, 0.25);
+  align-self: flex-end;
+  max-width: 80%;
+}
+
+.message-mentor {
+  background: rgba(255, 255, 255, 0.15);
+  align-self: flex-start;
+  max-width: 85%;
+}
+
+.message-system {
+  background: rgba(255, 255, 255, 0.1);
+  align-self: center;
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.message-error {
+  background: rgba(255, 59, 48, 0.3);
+  align-self: center;
+}
+
+.message-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.message-text {
+  flex: 1;
+  white-space: pre-wrap;
+}
+
+/* Chat Input */
+.chat-input-wrapper {
+  display: flex;
+  gap: 8px;
+}
+
+#cognify-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  font-size: 13px;
+  resize: none;
+  min-height: 36px;
+  max-height: 80px;
+  font-family: inherit;
+}
+
+#cognify-input::placeholder {
+  color: #999;
+}
+
+#cognify-send {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: white;
+  color: #667eea;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+#cognify-send:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+#cognify-send:active {
+  transform: translateY(0);
+}
+
+/* Action Buttons */
+.cognify-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cognify-actions button {
+  flex: 1;
+  min-width: 100px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cognify-actions button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* YouTube Learning Panel */
+#cognify-learning-panel {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  width: 360px;
+  max-height: 500px;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  z-index: 999999;
+  color: white;
+  font-family: inherit;
+}
+
+.cognify-learning {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.learning-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 16px 16px 0 0;
+  font-weight: 600;
+}
+
+.learning-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+}
+
+.learning-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  max-height: 440px;
+}
+
+.concept-tracker {
+  background: rgba(0, 0, 0, 0.15);
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.concept-tracker h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+}
+
+#concept-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#concept-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+}
+
+.timestamp {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.learning-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.learning-actions button {
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.learning-actions button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.learning-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#learning-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  max-height: 150px;
+  overflow-y: auto;
+  font-size: 13px;
+}
+
+.learning-message {
+  padding: 8px 10px;
+  border-radius: 6px;
+  line-height: 1.4;
+}
+
+.learning-message-user {
+  background: rgba(255, 255, 255, 0.25);
+  align-self: flex-end;
+}
+
+.learning-message-mentor {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.learning-message-system {
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 11px;
+  align-self: center;
+}
+
+#learning-input {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  font-size: 13px;
+  resize: none;
+  min-height: 40px;
+  font-family: inherit;
+}
+
+#learning-send {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: white;
+  color: #f5576c;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Concept Detection Notification */
+.cognify-concept-notify {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 999998;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.cognify-concept-notify button {
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.cognify-concept-notify button:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Scrollbar Styling */
+.chat-messages::-webkit-scrollbar,
+#learning-messages::-webkit-scrollbar,
+.learning-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track,
+#learning-messages::-webkit-scrollbar-track,
+.learning-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb,
+#learning-messages::-webkit-scrollbar-thumb,
+.learning-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover,
+#learning-messages::-webkit-scrollbar-thumb:hover,
+.learning-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  #cognify-mentor-panel {
+    width: calc(100% - 40px);
+    right: 20px;
+    left: 20px;
+  }
+  
+  #cognify-learning-panel {
+    width: calc(100% - 40px);
+    right: 20px;
+    left: 20px;
+  }
+}
