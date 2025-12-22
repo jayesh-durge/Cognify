@@ -19,55 +19,109 @@ export class GeminiService {
     // Load API key from storage (user provides in settings)
     const result = await chrome.storage.local.get('gemini_api_key');
     this.apiKey = result.gemini_api_key || config.GEMINI_API_KEY;
+    
+    if (this.apiKey) {
+      console.log('✅ Gemini API key loaded successfully');
+    } else {
+      console.warn('⚠️ No Gemini API key found. Please configure in extension settings.');
+    }
   }
 
   /**
    * Analyze problem to understand complexity, topics, and patterns
    */
   async analyzeProblem(problemData) {
-    const prompt = GEMINI_PROMPTS.analyzeProblem
-      .replace('{{title}}', problemData.title)
-      .replace('{{description}}', problemData.description)
-      .replace('{{constraints}}', problemData.constraints)
-      .replace('{{examples}}', JSON.stringify(problemData.examples));
+    try {
+      // Check API key first
+      if (!this.apiKey) {
+        await this.init(); // Try to reload
+        if (!this.apiKey) {
+          console.warn('⚠️ No API key - using fallback analysis');
+          return this.getFallbackAnalysis(problemData);
+        }
+      }
 
-    const response = await this.callGemini(prompt, {
-      temperature: 0.3,
-      maxTokens: 500
-    });
+      const prompt = GEMINI_PROMPTS.analyzeProblem
+        .replace('{{title}}', problemData.title || 'Unknown')
+        .replace('{{description}}', problemData.description || '')
+        .replace('{{constraints}}', problemData.constraints || '')
+        .replace('{{examples}}', JSON.stringify(problemData.examples || []));
 
-    return this.parseAnalysis(response);
+      const response = await this.callGemini(prompt, {
+        temperature: 0.3,
+        maxTokens: 500
+      });
+
+      return this.parseAnalysis(response);
+    } catch (error) {
+      console.error('❌ Analysis failed:', error.message);
+      // Return fallback analysis so UI doesn't hang
+      return this.getFallbackAnalysis(problemData);
+    }
   }
 
   /**
    * Generate Socratic hints - ASK, don't TELL
    */
   async generateHint(params) {
-    const { problem, userCode, userQuestion, previousHints, mode, context } = params;
+    const { problem, userCode, userQuestion, previousHints, mode, context, conversationHistory, actionType } = params;
 
-    // Build context-aware prompt
-    let promptTemplate = mode === 'interview' 
-      ? GEMINI_PROMPTS.interviewHint 
-      : GEMINI_PROMPTS.practiceHint;
+    // Build context string from conversation history
+    let conversationContext = '';
+    if (conversationHistory && conversationHistory.length > 0) {
+      conversationContext = '\n\nPrevious conversation:\n' + 
+        conversationHistory.map(msg => `${msg.role === 'user' ? 'Student' : 'Mentor'}: ${msg.message}`).join('\n');
+    }
+
+    // Choose prompt based on action type
+    let promptTemplate;
+    let systemInstruction = GEMINI_PROMPTS.systemRules.noSolutionRule;
+    
+    if (actionType === 'hint') {
+      // User clicked "Get Hint" button - give structured guidance
+      promptTemplate = mode === 'interview' 
+        ? GEMINI_PROMPTS.interviewHint 
+        : GEMINI_PROMPTS.practiceHint;
+      systemInstruction += '\n\nThe user specifically requested a hint. Guide them with Socratic questions about the approach.';
+    } else if (actionType === 'chat') {
+      // User is chatting - respond conversationally based on their question
+      promptTemplate = `You are a coding mentor helping with: {{problem_title}}
+      
+Problem context:
+{{problem_description}}
+
+Student's code:
+{{user_code}}
+
+${conversationContext}
+
+Student's question: {{user_question}}
+
+RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If they're on the right track, encourage and probe deeper. Never give the solution directly.`;
+      systemInstruction += '\n\nThis is a conversational exchange. Respond naturally to what the student asked, considering previous messages.';
+    } else {
+      // Default to practice mode
+      promptTemplate = GEMINI_PROMPTS.practiceHint;
+    }
 
     const prompt = this.buildPrompt(promptTemplate, {
       problem_title: problem.title,
       problem_description: problem.description,
       user_code: userCode || 'No code yet',
       user_question: userQuestion,
-      previous_hints_count: previousHints.length,
-      hint_level: context.hintLevel || 'medium'
+      previous_hints_count: previousHints?.length || 0,
+      hint_level: context?.hintLevel || 'medium'
     });
 
     const response = await this.callGemini(prompt, {
       temperature: 0.7,
-      maxTokens: 300,
-      systemInstruction: GEMINI_PROMPTS.systemRules.noSolutionRule
+      maxTokens: 800,
+      systemInstruction: systemInstruction
     });
 
     return {
       question: response.text,
-      type: response.metadata?.hintType || 'guiding_question',
+      type: response.metadata?.hintType || (actionType === 'chat' ? 'conversation' : 'guiding_question'),
       followUp: response.metadata?.followUp
     };
   }
@@ -88,7 +142,7 @@ export class GeminiService {
 
     const response = await this.callGemini(prompt, {
       temperature: 0.4,
-      maxTokens: 600,
+      maxTokens: 1000,
       systemInstruction: GEMINI_PROMPTS.systemRules.explainWhyNotHow
     });
 
@@ -266,13 +320,17 @@ export class GeminiService {
 
   // Core Gemini API call with error handling and rate limiting
   async callGemini(prompt, options = {}) {
+    // Ensure API key is loaded
+    if (!this.apiKey) {
+      await this.init(); // Try to reload
+      if (!this.apiKey) {
+        throw new Error('Gemini API key not configured. Please add it in settings.');
+      }
+    }
+
     // Check rate limit
     if (!await this.rateLimiter.allowRequest()) {
       throw new Error('Rate limit exceeded. Please wait before making more requests.');
-    }
-
-    if (!this.apiKey) {
-      throw new Error('Gemini API key not configured. Please add it in settings.');
     }
 
     const url = `${this.baseUrl}/models/${this.model}:generateContent?key=${this.apiKey}`;
@@ -309,17 +367,26 @@ export class GeminiService {
     }
 
     try {
+      // Add 10 second timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(`Gemini API error: ${error.error?.message || response.statusText}`);
+        const errorMsg = error.error?.message || response.statusText;
+        console.error('❌ Gemini API error:', errorMsg);
+        throw new Error(errorMsg);
       }
 
       const data = await response.json();
@@ -335,7 +402,11 @@ export class GeminiService {
       };
 
     } catch (error) {
-      console.error('Gemini API call failed:', error);
+      if (error.name === 'AbortError') {
+        console.error('❌ Request timeout after 10 seconds');
+        throw new Error('Request timed out. Please try again.');
+      }
+      console.error('❌ Gemini API call failed:', error.message);
       throw error;
     }
   }
@@ -371,6 +442,21 @@ export class GeminiService {
       estimatedTime: response.metadata?.estimatedTime || 30,
       prerequisites: response.metadata?.prerequisites || [],
       summary: response.text
+    };
+  }
+
+  // Fallback analysis when API fails or no key configured
+  getFallbackAnalysis(problemData) {
+    const difficulty = problemData.difficulty || 'medium';
+    const topics = problemData.tags || [];
+    
+    return {
+      difficulty,
+      topics,
+      patterns: ['Unknown - API key required for analysis'],
+      estimatedTime: difficulty === 'easy' ? 15 : difficulty === 'hard' ? 45 : 30,
+      prerequisites: [],
+      summary: `Problem: ${problemData.title}\nDifficulty: ${difficulty}\nTo get AI analysis, please configure your Gemini API key in extension settings.`
     };
   }
 }

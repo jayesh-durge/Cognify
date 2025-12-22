@@ -38,6 +38,14 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   }
 });
 
+// Listen for storage changes to reload API key
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.gemini_api_key) {
+    console.log('🔄 API key changed, reloading...');
+    geminiService.init();
+  }
+});
+
 // Message router - handles all extension communication
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Message received:', message.type, 'from:', sender.tab?.id || 'popup/sidepanel');
@@ -110,8 +118,16 @@ async function handleProblemExtraction(data, sender) {
   
   await sessionManager.saveSession(sender.tab.id, session);
   
-  // Analyze problem complexity and topics
-  const analysis = await geminiService.analyzeProblem(problemData);
+  // Don't auto-analyze to save API quota - user can request analysis manually
+  // Return basic analysis from problem data
+  const analysis = {
+    difficulty: problemData.difficulty || 'medium',
+    topics: problemData.tags || [],
+    patterns: ['Click "Analyze Code" for AI insights'],
+    estimatedTime: problemData.difficulty === 'easy' ? 15 : problemData.difficulty === 'hard' ? 45 : 30,
+    prerequisites: [],
+    summary: `Problem extracted. Ask me questions or click "Get Hint" for guidance.`
+  };
   
   return {
     success: true,
@@ -124,44 +140,78 @@ async function handleProblemExtraction(data, sender) {
  * Generate contextual hints without revealing solution
  */
 async function handleHintRequest(data, sender) {
-  const { userCode, userQuestion, context } = data;
+  const { userCode, userQuestion, context, conversationHistory, actionType } = data;
   const session = await sessionManager.getCurrentSession(sender.tab.id);
   const mode = await getMode();
+  
+  // Check if API key is configured
+  const settings = await chrome.storage.local.get('gemini_api_key');
+  if (!settings.gemini_api_key) {
+    return {
+      success: false,
+      error: 'Please configure your Gemini API key in extension settings first'
+    };
+  }
+  
+  // Check if problem is loaded
+  if (!session.currentProblem || !session.currentProblem.title || session.currentProblem.title === 'Unknown Problem') {
+    return {
+      success: false,
+      error: 'Problem not detected. Please refresh the page and wait a few seconds.'
+    };
+  }
   
   // Track hint requests (for spaced learning)
   session.hints = session.hints || [];
   session.hints.push({
     timestamp: Date.now(),
     userQuestion,
+    actionType: actionType || 'chat',
     codeSnapshot: userCode?.substring(0, 200) // First 200 chars
   });
   
-  // Generate hint using AI with strict no-solution rules
-  const hint = await geminiService.generateHint({
-    problem: session.currentProblem,
-    userCode,
-    userQuestion,
-    previousHints: session.hints,
-    mode,
-    context
-  });
+  try {
+    // Generate hint using AI with strict no-solution rules
+    // Pass conversation history and action type for context-aware responses
+    const hint = await geminiService.generateHint({
+      problem: session.currentProblem,
+      userCode,
+      userQuestion,
+      previousHints: session.hints,
+      conversationHistory: conversationHistory || [],
+      actionType: actionType || 'chat', // 'chat', 'hint', or 'analyze'
+      mode,
+      context
+    });
+    
+    // Update session
+    await sessionManager.saveSession(sender.tab.id, session);
   
-  // Update session
-  await sessionManager.saveSession(sender.tab.id, session);
-  
-  // Sync to Firebase for dashboard
-  await firebaseService.logInteraction({
-    type: 'hint_request',
-    problemId: session.currentProblem?.title,
-    hint: hint.question, // Don't log full response for privacy
-    timestamp: Date.now()
-  });
-  
-  return {
-    success: true,
-    hint,
-    remainingHints: calculateRemainingHints(session.hints, mode)
-  };
+    // Sync to Firebase for dashboard
+    await firebaseService.logInteraction({
+      type: 'hint_request',
+      problemId: session.currentProblem?.title,
+      hint: hint.question, // Don't log full response for privacy
+      timestamp: Date.now()
+    });
+    
+    console.log('✅ Hint generated successfully:', {
+      questionLength: hint.question?.length,
+      preview: hint.question?.substring(0, 100)
+    });
+    
+    return {
+      success: true,
+      hint,
+      remainingHints: calculateRemainingHints(session.hints, mode)
+    };
+  } catch (error) {
+    console.error('Error generating hint:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to generate hint. Please check your API key and quota.'
+    };
+  }
 }
 
 /**
