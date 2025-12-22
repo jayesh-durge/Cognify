@@ -5,11 +5,52 @@
 let currentSession = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // Check authentication first
+  const authCheck = await checkAuthentication();
+  if (!authCheck) {
+    return; // User needs to sign in
+  }
+  
   setupTabs();
   await loadSessionData();
   attachListeners();
   startSessionTimer();
 });
+
+async function checkAuthentication() {
+  // Check if user is authenticated
+  const result = await chrome.storage.local.get(['user_id', 'user_profile']);
+  
+  if (!result.user_id) {
+    // Show login required message
+    document.body.innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 20px; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div style="font-size: 64px; margin-bottom: 24px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));">🔒</div>
+        <h2 style="margin: 0 0 12px 0; color: #ffffff; font-size: 24px; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">Sign In Required</h2>
+        <p style="margin: 0 0 28px 0; color: #ffffff; font-size: 15px; opacity: 0.95; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">Please sign in to use Cognify Mentor features</p>
+        <button id="loginBtn" style="background: #ffffff; color: #667eea; border: none; padding: 14px 28px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: all 0.3s; transform: scale(1);" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.2)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'">Open Dashboard to Sign In</button>
+        <p style="font-size: 13px; color: #ffffff; margin: 0; opacity: 0.85; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">A new tab will open for authentication</p>
+      </div>
+    `;
+    
+    // Add click handler to open dashboard
+    document.getElementById('loginBtn').addEventListener('click', () => {
+      chrome.tabs.create({ url: 'http://localhost:3000' });
+    });
+    
+    // Listen for authentication
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && changes.user_id) {
+        // User signed in, reload the sidepanel
+        window.location.reload();
+      }
+    });
+    
+    return false;
+  }
+  
+  return true;
+}
 
 function setupTabs() {
   document.querySelectorAll('.sp-tab').forEach(tab => {

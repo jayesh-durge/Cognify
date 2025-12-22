@@ -21,10 +21,24 @@
     
     // Check if we're on a problem page
     if (isProblemPage()) {
-      extractAndSendProblem();
-      injectMentorPanel();
-      observeCodeEditor();
+      // Check authentication before initializing
+      checkAuthentication().then(isAuthenticated => {
+        extractAndSendProblem();
+        injectMentorPanel(isAuthenticated);
+        observeCodeEditor();
+      });
     }
+  }
+  
+  /**
+   * Check if user is authenticated
+   */
+  async function checkAuthentication() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['user_id'], (result) => {
+        resolve(!!result.user_id);
+      });
+    });
   }
 
   function isProblemPage() {
@@ -125,25 +139,80 @@
     return memEl?.textContent?.trim() || '256MB';
   }
 
-  function injectMentorPanel() {
-    // Create floating mentor panel
+  function injectMentorPanel(isAuthenticated) {
+    if (mentorPanel) return;
+
     mentorPanel = document.createElement('div');
     mentorPanel.id = 'cognify-mentor-panel';
-    mentorPanel.className = 'cognify-panel';
-    mentorPanel.innerHTML = `
-      <div class="cognify-header">
-        <span style="font-size: 24px;">🧠</span>
-        <span>AI Mentor</span>
-        <button id="cognify-toggle" title="Toggle Panel">−</button>
-      </div>
-      <div class="cognify-content">
-        <div class="cognify-mode-selector">
-          <button class="mode-btn active" data-mode="practice">Practice</button>
-          <button class="mode-btn" data-mode="interview">Interview</button>
+    
+    if (!isAuthenticated) {
+      // Show login required UI
+      mentorPanel.innerHTML = `
+        <div class="cognify-panel">
+          <div class="cognify-header">
+            <span class="cognify-logo">🧠 Cognify Mentor</span>
+            <button class="cognify-minimize" title="Minimize">−</button>
+          </div>
+          <div class="cognify-content" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 20px; text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 15px;">🔒</div>
+            <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">Sign In Required</h3>
+            <p style="margin: 0 0 20px 0; color:white; font-size: 13px;">Please sign in to use Cognify Mentor features</p>
+            <button id="cognify-login-btn" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3); transition: all 0.3s;">
+              Open Dashboard to Sign In
+            </button>
+            <p style="font-size: 11px; color: #999; margin-top: 15px;">A new tab will open for authentication</p>
+          </div>
         </div>
-        <div id="cognify-chat" class="cognify-chat"></div>
-        <div class="cognify-input-area">
-          <textarea id="cognify-input" placeholder="Ask for guidance (not solutions)..."></textarea>
+      `;
+      
+      document.body.appendChild(mentorPanel);
+      
+      // Setup minimize button
+      document.querySelector('.cognify-minimize').addEventListener('click', () => {
+        mentorPanel.classList.toggle('minimized');
+      });
+      
+      // Setup login button
+      document.getElementById('cognify-login-btn').addEventListener('click', () => {
+        chrome.runtime.sendMessage({ type: 'SIGN_IN' }, (response) => {
+          if (response?.success) {
+            // Reload page to reinitialize with auth
+            addMessage('Sign-in successful! Reloading page...', 'system');
+            setTimeout(() => window.location.reload(), 1500);
+          }
+        });
+      });
+      
+      // Listen for authentication changes
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && changes.user_id) {
+          // User signed in, reload the page
+          window.location.reload();
+        }
+      });
+      
+      return;
+    }
+    
+    // Show normal authenticated UI
+    mentorPanel.innerHTML = `
+      <div class="cognify-panel">
+        <div class="cognify-header">
+          <span class="cognify-logo">🧠 Cognify Mentor</span>
+          <button class="cognify-minimize" title="Minimize">−</button>
+        </div>
+        <div class="cognify-content">
+          <div class="cognify-mode-selector">
+            <button class="mode-btn active" data-mode="practice">Practice</button>
+            <button class="mode-btn" data-mode="interview">Interview</button>
+          </div>
+          <div class="cognify-status">
+            <p class="status-text">Loading problem...</p>
+          </div>
+          <div class="cognify-chat">
+            <div class="chat-messages" id="cognify-messages"></div>
+            <div class="chat-input-wrapper">
+              <textarea id="cognify-input" placeholder="Ask a guiding question (I won't give you the answer!)"></textarea>
           <button id="cognify-send">Send</button>
         </div>
       </div>

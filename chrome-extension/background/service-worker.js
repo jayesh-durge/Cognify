@@ -55,6 +55,27 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
+/**
+ * Check if user is authenticated
+ */
+async function requireAuth() {
+  if (!authService) {
+    authService = new AuthService();
+    await authService.init();
+  }
+  
+  const user = await authService.getCurrentUser();
+  if (!user) {
+    return {
+      success: false,
+      requiresAuth: true,
+      error: 'Authentication required. Please sign in to use this feature.',
+      dashboardUrl: 'http://localhost:3000'
+    };
+  }
+  return { success: true, user };
+}
+
 // Message router - handles all extension communication
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Message received:', message.type, 'from:', sender.tab?.id || 'popup/sidepanel');
@@ -62,7 +83,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Handle async responses
   (async () => {
     try {
+      // Check authentication for protected endpoints
+      const protectedEndpoints = [
+        'EXTRACT_PROBLEM',
+        'REQUEST_HINT',
+        'ANALYZE_CODE',
+        'PROBLEM_SOLVED',
+        'START_INTERVIEW',
+        'INTERVIEW_QUESTION',
+        'END_INTERVIEW',
+        'EXPLAIN_CONCEPT',
+        'SYNC_PROGRESS',
+        'GET_RECOMMENDATIONS'
+      ];
+      
+      if (protectedEndpoints.includes(message.type)) {
+        const authCheck = await requireAuth();
+        if (!authCheck.success) {
+          return authCheck;
+        }
+      }
+      
       switch (message.type) {
+        case 'CHECK_AUTH':
+          return await requireAuth();
+          
         case 'EXTRACT_PROBLEM':
           return await handleProblemExtraction(message.data, sender);
         

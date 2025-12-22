@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { getUserStats, getInterviewReports, getUserActivities, getProgressData } from '../services/firebase'
+import { getUserStats, getInterviewReports, getUserActivities, getProgressData, getUserProblems } from '../services/firebase'
 import { TrendingUp, Trophy, Target, Clock, Award, Brain, Activity, Zap, CheckCircle, Code } from 'lucide-react'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
@@ -10,6 +10,7 @@ export default function Dashboard() {
   const [recentInterviews, setRecentInterviews] = useState([])
   const [activities, setActivities] = useState([])
   const [progressData, setProgressData] = useState(null)
+  const [problems, setProblems] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -25,18 +26,20 @@ export default function Dashboard() {
 
     setLoading(true)
 
-    // Load all data
-    const [statsResult, interviewsResult, activitiesResult, progressResult] = await Promise.all([
+    // Load all data including problems for accurate count
+    const [statsResult, interviewsResult, activitiesResult, progressResult, problemsResult] = await Promise.all([
       getUserStats(user.uid),
       getInterviewReports(user.uid, 5),
       getUserActivities(user.uid, 20),
-      getProgressData(user.uid)
+      getProgressData(user.uid),
+      getUserProblems(user.uid, 1000)
     ])
 
     if (statsResult.data) setStats(statsResult.data)
     if (interviewsResult.data) setRecentInterviews(interviewsResult.data)
     if (activitiesResult.data) setActivities(activitiesResult.data)
     if (progressResult.data) setProgressData(progressResult.data)
+    if (problemsResult.data) setProblems(problemsResult.data)
 
     setLoading(false)
   }
@@ -49,7 +52,12 @@ export default function Dashboard() {
     )
   }
 
-  const problemsByDifficulty = stats?.problemsByDifficulty || { easy: 0, medium: 0, hard: 0 }
+  // Calculate problems by difficulty from actual problems data
+  const problemsByDifficulty = {
+    easy: problems.filter(p => p.difficulty?.toLowerCase() === 'easy').length,
+    medium: problems.filter(p => p.difficulty?.toLowerCase() === 'medium').length,
+    hard: problems.filter(p => p.difficulty?.toLowerCase() === 'hard').length
+  }
   const pieData = [
     { name: 'Easy', value: problemsByDifficulty.easy, color: '#10b981' },
     { name: 'Medium', value: problemsByDifficulty.medium, color: '#f59e0b' },
@@ -69,8 +77,11 @@ export default function Dashboard() {
         <StatCard
           icon={<Trophy className="text-yellow-500" />}
           label="Problems Solved"
-          value={stats?.solvedCount || 0}
-          trend="+12 this week"
+          value={problems.length}
+          trend={`+${Math.min(problems.filter(p => {
+            const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+            return p.solvedAt >= weekAgo;
+          }).length, 99)} this week`}
           trendUp={true}
         />
         <StatCard
