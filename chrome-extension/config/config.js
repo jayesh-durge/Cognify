@@ -9,8 +9,16 @@ export const config = {
   GEMINI_MODEL: 'gemini-2.5-flash',
   
   // Firebase Configuration
+  FIREBASE_CONFIG: {
+    apiKey: "AIzaSyBVh7yZQR8rZJ9xKjN7HFgEQpZ8vW4xYzQ",
+    authDomain: "cognify-68642.firebaseapp.com",
+    projectId: "cognify-68642",
+    storageBucket: "cognify-68642.firebasestorage.app",
+    messagingSenderId: "123456789",
+    appId: "1:123456789:web:abcdef"
+  },
   FIREBASE_FUNCTIONS_URL: 'https://us-central1-cognify-ai.cloudfunctions.net',
-  FIREBASE_PROJECT_ID: 'cognify-ai',
+  FIREBASE_PROJECT_ID: 'cognify-68642',
   
   // Feature Flags
   FEATURES: {

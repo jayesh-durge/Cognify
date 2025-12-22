@@ -236,12 +236,15 @@
   display: flex;
   gap: 8px;
   flex-shrink: 0;
+  align-items: flex-end;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 #cognify-input {
   flex: 1;
   padding: 10px 12px;
-  border: none;
+  border: 2px solid transparent;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.9);
   color: #333;
@@ -255,6 +258,14 @@
   overflow-x: hidden;
   word-wrap: break-word;
   white-space: pre-wrap;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+#cognify-input:focus {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 1);
 }
 
 #cognify-input::placeholder {
@@ -263,7 +274,7 @@
 }
 
 #cognify-send {
-  padding: 8px 16px;
+  padding: 10px 16px;
   border: none;
   border-radius: 8px;
   background: white;
@@ -272,11 +283,21 @@
   cursor: pointer;
   font-size: 13px;
   transition: transform 0.2s, box-shadow 0.2s;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 #cognify-send:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+#cognify-send:active {
+  transform: translateY(0);
 }
 
 #cognify-send:active {
@@ -463,25 +484,51 @@
 }
 
 #learning-input {
-  padding: 8px 12px;
-  border: none;
+  padding: 10px 12px;
+  border: 2px solid transparent;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.9);
   color: #333;
   font-size: 13px;
   resize: none;
   min-height: 40px;
+  max-height: 100px;
   font-family: inherit;
+  box-sizing: border-box;
+  outline: none;
+  width: 100%;
+  overflow-y: auto;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+#learning-input:focus {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 1);
 }
 
 #learning-send {
-  padding: 8px 16px;
+  padding: 10px 16px;
   border: none;
   border-radius: 8px;
   background: white;
   color: #f5576c;
   font-weight: 600;
   cursor: pointer;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+#learning-send:hover {
+  transform: translateY(-2px);
+}
+
+#learning-send:active {
+  transform: translateY(0);
 }
 
 /* Concept Detection Notification */

@@ -13,9 +13,30 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user)
       setLoading(false)
+      
+      // Sync auth to extension if logged in
+      if (user) {
+        const token = await user.getIdToken()
+        
+        // Post message to window (extension will listen)
+        window.postMessage({
+          type: 'COGNIFY_AUTH',
+          userId: user.uid,
+          token,
+          displayName: user.displayName,
+          email: user.email
+        }, window.location.origin)
+        
+        console.log('✅ Auth synced to extension')
+      } else {
+        // Notify logout
+        window.postMessage({
+          type: 'COGNIFY_LOGOUT'
+        }, window.location.origin)
+      }
     })
 
     return unsubscribe

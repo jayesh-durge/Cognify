@@ -49,6 +49,12 @@
       "js": ["content-scripts/youtube.js"],
       "css": ["content-scripts/styles/common.css"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["http://localhost:*/*", "http://127.0.0.1:*/*"],
+      "js": ["popup/auth-sync.js"],
+      "run_at": "document_start",
+      "all_frames": false
     }
   ],
 
@@ -57,7 +63,8 @@
     "tabs",
     "scripting",
     "sidePanel",
-    "activeTab"
+    "activeTab",
+    "identity"
   ],
 
   "host_permissions": [
@@ -66,7 +73,10 @@
     "*://*.codeforces.com/*",
     "*://*.geeksforgeeks.org/*",
     "*://*.youtube.com/*",
-    "https://generativelanguage.googleapis.com/*"
+    "https://generativelanguage.googleapis.com/*",
+    "https://firestore.googleapis.com/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
   ],
 
   "web_accessible_resources": [

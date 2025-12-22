@@ -103,7 +103,7 @@ function attachListeners() {
     chrome.tabs.sendMessage(tab.id, {
       type: 'REQUEST_CODE_ANALYSIS'
     }, async (response) => {
-      btn.textContent = 'Analyze My Code';
+      btn.textContent = 'Analyze Code';
       btn.disabled = false;
 
       if (response?.code) {

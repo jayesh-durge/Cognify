@@ -6,12 +6,21 @@
 
 import { GeminiService } from '../services/gemini-service.js';
 import { FirebaseService } from '../services/firebase-service.js';
+import { AuthService } from '../services/auth-service.js';
 import { SessionManager } from '../utils/session-manager.js';
 
 // Initialize services
 const geminiService = new GeminiService();
 const firebaseService = new FirebaseService();
+let authService = null; // Initialize later to avoid async issues
 const sessionManager = new SessionManager();
+
+// Initialize auth service after Chrome is ready
+(async () => {
+  authService = new AuthService();
+  await authService.init();
+  console.log('✅ Auth service initialized');
+})();
 
 // Service worker lifecycle
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -63,6 +72,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case 'ANALYZE_CODE':
           return await handleCodeAnalysis(message.data, sender);
         
+        case 'PROBLEM_SOLVED':
+          return await handleProblemSolved(message.data, sender);
+        
         case 'START_INTERVIEW':
           return await handleInterviewStart(message.data, sender);
         
@@ -84,6 +96,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case 'OPEN_SIDEPANEL':
           await chrome.sidePanel.open({ tabId: sender.tab.id });
           return { success: true };
+        
+        case 'SET_USER_AUTH':
+          return await handleSetAuth(message.data);
+        
+        case 'SIGN_IN':
+          return await handleSignIn();
+        
+        case 'SIGN_OUT':
+          return await handleSignOut();
         
         default:
           return { error: 'Unknown message type' };
@@ -386,6 +407,89 @@ async function handleConceptExplanation(data, sender) {
     explanation,
     relatedProblems
   };
+}
+
+/**
+ * Handle problem solved event - sync to Firebase
+ */
+async function handleProblemSolved(data, sender) {
+  const { problemData, sessionData } = data;
+  const session = await sessionManager.getCurrentSession(sender.tab.id);
+  const mode = await getMode();
+  
+  console.log('🎯 Problem solved!', problemData);
+  
+  // Prepare problem data with session stats
+  const fullProblemData = {
+    ...problemData,
+    mode,
+    timeSpent: sessionData?.timeSpent || 0,
+    hintsUsed: session.hints?.length || 0,
+    codeAnalyses: session.codeIterations?.length || 0,
+    attempts: sessionData?.attempts || 1,
+    platform: problemData.platform || 'leetcode'
+  };
+  
+  // Log to Firebase
+  await firebaseService.logProblemSolved(fullProblemData);
+  
+  // Clear session
+  await sessionManager.clearSession(sender.tab.id);
+  
+  return {
+    success: true,
+    message: 'Problem logged to dashboard!'
+  };
+}
+
+/**
+ * Set user authentication from dashboard
+ */
+async function handleSetAuth(data) {
+  const { userId, token } = data;
+  await firebaseService.setAuth(userId, token);
+  console.log('✅ User authenticated:', userId);
+  return { success: true };
+}
+
+/**
+ * Handle sign-in request from popup
+ */
+async function handleSignIn() {
+  console.log('🔐 Handling sign-in request...');
+  
+  // Make sure authService is initialized
+  if (!authService) {
+    console.log('⏳ Auth service not ready, initializing...');
+    authService = new AuthService();
+    await authService.init();
+  }
+  
+  const result = await authService.signInWithGoogle();
+  
+  if (result.success) {
+    // Reinitialize Firebase service with new user
+    await firebaseService.init();
+    console.log('✅ Sign-in successful:', result.user.displayName);
+  }
+  
+  return result;
+}
+
+/**
+ * Handle sign-out request from popup
+ */
+async function handleSignOut() {
+  console.log('🚪 Handling sign-out request...');
+  const result = await authService.signOut();
+  
+  if (result.success) {
+    // Clear Firebase service
+    await firebaseService.signOut();
+    console.log('✅ Sign-out successful');
+  }
+  
+  return result;
 }
 
 /**

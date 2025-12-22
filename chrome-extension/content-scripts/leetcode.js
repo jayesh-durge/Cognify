@@ -44,7 +44,17 @@
         console.log('🔄 Retrying problem extraction...');
         extractProblemData();
       }
-    }, 5000);
+      
+      // Make sure status text is not stuck on "Loading..."
+      const statusText = document.querySelector('.status-text');
+      if (statusText && statusText.textContent.includes('Loading')) {
+        if (problemData && problemData.title) {
+          statusText.innerHTML = `<strong>${problemData.title}</strong><br>Difficulty: ${problemData.difficulty}`;
+        } else {
+          statusText.innerHTML = `<strong>Ready</strong><br>Ask questions or click "Get Hint"`;
+        }
+      }
+    }, 8000); // Check after 8 seconds
   }
 
   /**
@@ -160,14 +170,19 @@
 
       console.log('✅ Extracted problem data:', { title, difficulty, descLength: description.length, exampleCount: examples.length });
 
-      // Update UI immediately with extracted data
+      // Update UI immediately with extracted data - ALWAYS show the problem info
+      const statusText = document.querySelector('.status-text');
+      if (statusText) {
+        statusText.innerHTML = `<strong>${title}</strong><br>Difficulty: ${difficulty}${tags.length > 0 ? '<br>Topics: ' + tags.slice(0, 3).join(', ') : ''}`;
+      }
+      
       updateMentorPanel({
         difficulty,
         topics: tags,
         estimatedTime: difficulty === 'easy' ? 15 : difficulty === 'hard' ? 45 : 30
       });
 
-      // Send to background for AI analysis (may take a few seconds)
+      // Send to background for AI analysis (optional enhancement)
       chrome.runtime.sendMessage({
         type: 'EXTRACT_PROBLEM',
         data: {
@@ -177,26 +192,28 @@
       }, (response) => {
         if (chrome.runtime.lastError) {
           console.error('❌ Extension error:', chrome.runtime.lastError);
-          const statusText = document.querySelector('.status-text');
-          if (statusText) {
-            statusText.innerHTML = `<strong>Extension Error</strong><br>Please reload the page`;
-          }
+          // Don't show error - already have basic info displayed
           return;
         }
-        if (response?.success) {
+        if (response?.success && response.analysis) {
           console.log('✅ Problem analyzed by AI:', response.analysis);
           updateMentorPanel(response.analysis);
+          // Update status with AI insights if available
+          if (statusText && response.analysis.summary) {
+            statusText.innerHTML = `<strong>${title}</strong><br>${response.analysis.summary.substring(0, 100)}...`;
+          }
         } else if (response?.error) {
           console.error('❌ Analysis error:', response.error);
-          const statusText = document.querySelector('.status-text');
-          if (statusText) {
-            statusText.innerHTML = `<strong>Problem Detected</strong><br>Difficulty: ${difficulty}<br>${response.error}`;
-          }
+          // Keep showing basic problem info even if AI analysis fails
         }
       });
 
     } catch (error) {
       console.error('Error extracting LeetCode problem:', error);
+      const statusText = document.querySelector('.status-text');
+      if (statusText) {
+        statusText.innerHTML = `<strong>Problem Detected</strong><br>Click "Get Hint" to start`;
+      }
     }
   }
 
@@ -221,7 +238,7 @@
             <button class="mode-btn" data-mode="learning">Learning</button>
           </div>
           <div class="cognify-status">
-            <p class="status-text">Analyzing problem...</p>
+            <p class="status-text">Loading problem...</p>
           </div>
           <div class="cognify-chat">
             <div class="chat-messages" id="cognify-messages"></div>
@@ -232,7 +249,8 @@
           </div>
           <div class="cognify-actions">
             <button id="cognify-hint">Get Hint</button>
-            <button id="cognify-analyze">Analyze My Code</button>
+            <button id="cognify-analyze">Analyze Code</button>
+            <button id="cognify-solved">✓ Mark Solved</button>
             <button id="cognify-sidepanel">Open Full Panel</button>
           </div>
         </div>
@@ -279,6 +297,9 @@
 
     // Analyze code
     document.getElementById('cognify-analyze').addEventListener('click', analyzeCode);
+
+    // Mark as solved
+    document.getElementById('cognify-solved').addEventListener('click', markProblemSolved);
 
     // Open side panel
     document.getElementById('cognify-sidepanel').addEventListener('click', () => {
@@ -443,6 +464,46 @@
         if (response.remainingHints >= 0) {
           addMessage(`Hints remaining in this session: ${response.remainingHints}`, 'system');
         }
+      }
+    });
+  }
+
+  /**
+   * Mark problem as solved and sync to Firebase
+   */
+  function markProblemSolved() {
+    if (!problemData) {
+      addMessage('❌ No problem detected. Please refresh the page.', 'error');
+      return;
+    }
+
+    // Calculate session data
+    const sessionData = {
+      timeSpent: Math.floor((Date.now() - problemData.timestamp) / 1000 / 60), // minutes
+      attempts: conversationHistory.filter(m => m.actionType === 'analyze').length + 1
+    };
+
+    addMessage('🎉 Marking as solved and syncing to dashboard...', 'system');
+
+    chrome.runtime.sendMessage({
+      type: 'PROBLEM_SOLVED',
+      data: {
+        problemData,
+        sessionData
+      }
+    }, (response) => {
+      if (response?.success) {
+        addMessage('✅ Problem logged to your dashboard! Check your progress there.', 'mentor');
+        
+        // Visual feedback
+        const solvedBtn = document.getElementById('cognify-solved');
+        if (solvedBtn) {
+          solvedBtn.style.backgroundColor = '#22c55e';
+          solvedBtn.textContent = '✓ Logged!';
+          solvedBtn.disabled = true;
+        }
+      } else {
+        addMessage(`⚠️ ${response?.error || 'Could not sync to dashboard. Data saved locally.'}`, 'system');
       }
     });
   }
