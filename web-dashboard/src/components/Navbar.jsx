@@ -1,7 +1,7 @@
 import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { LogOut, Settings, BarChart3 } from 'lucide-react'
+import { LogOut, BarChart3 } from 'lucide-react'
 
 export default function Navbar() {
   const { user, signOut } = useAuth()
@@ -52,14 +52,6 @@ export default function Navbar() {
                 {user?.displayName}
               </span>
             </div>
-
-            <Link
-              to="/settings"
-              className="p-2 text-gray-600 hover:text-primary-500 transition-colors"
-              title="Settings"
-            >
-              <Settings size={20} />
-            </Link>
 
             <button
               onClick={handleSignOut}

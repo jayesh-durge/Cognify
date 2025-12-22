@@ -132,7 +132,6 @@
         <div class="cognify-mode-selector">
           <button class="mode-btn active" data-mode="practice">Practice</button>
           <button class="mode-btn" data-mode="interview">Interview</button>
-          <button class="mode-btn" data-mode="learning">Learning</button>
         </div>
         <div id="cognify-chat" class="cognify-chat"></div>
         <div class="cognify-input-area">

@@ -235,7 +235,6 @@
           <div class="cognify-mode-selector">
             <button class="mode-btn active" data-mode="practice">Practice</button>
             <button class="mode-btn" data-mode="interview">Interview</button>
-            <button class="mode-btn" data-mode="learning">Learning</button>
           </div>
           <div class="cognify-status">
             <p class="status-text">Loading problem...</p>
@@ -251,7 +250,6 @@
             <button id="cognify-hint">Get Hint</button>
             <button id="cognify-analyze">Analyze Code</button>
             <button id="cognify-solved">✓ Mark Solved</button>
-            <button id="cognify-sidepanel">Open Full Panel</button>
           </div>
         </div>
       </div>
@@ -261,6 +259,15 @@
 
     // Setup event listeners
     setupPanelListeners();
+    
+    // Set initial status visibility based on stored mode
+    chrome.storage.local.get(['mode'], (result) => {
+      const currentMode = result.mode || 'practice';
+      const statusSection = document.querySelector('.cognify-status');
+      if (statusSection) {
+        statusSection.style.display = currentMode === 'practice' ? 'block' : 'none';
+      }
+    });
   }
 
   /**
@@ -275,6 +282,12 @@
         const mode = e.target.dataset.mode;
         chrome.storage.local.set({ mode });
         addMessage(`Switched to ${mode} mode`, 'system');
+        
+        // Show/hide status based on mode
+        const statusSection = document.querySelector('.cognify-status');
+        if (statusSection) {
+          statusSection.style.display = mode === 'practice' ? 'block' : 'none';
+        }
       });
     });
 
@@ -300,11 +313,6 @@
 
     // Mark as solved
     document.getElementById('cognify-solved').addEventListener('click', markProblemSolved);
-
-    // Open side panel
-    document.getElementById('cognify-sidepanel').addEventListener('click', () => {
-      chrome.runtime.sendMessage({ type: 'OPEN_SIDEPANEL' });
-    });
   }
 
   /**

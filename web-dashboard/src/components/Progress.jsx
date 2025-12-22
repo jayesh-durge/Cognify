@@ -50,55 +50,6 @@ export default function Progress() {
         <p className="text-gray-600 mt-1">Track all problems you've solved</p>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Solved</p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">{stats?.solvedCount || 0}</p>
-            </div>
-            <CheckCircle className="text-green-500" size={32} />
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Easy</p>
-              <p className="text-3xl font-bold text-green-600 mt-1">
-                {stats?.problemsByDifficulty?.easy || 0}
-              </p>
-            </div>
-            <Award className="text-green-500" size={32} />
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Medium</p>
-              <p className="text-3xl font-bold text-orange-600 mt-1">
-                {stats?.problemsByDifficulty?.medium || 0}
-              </p>
-            </div>
-            <TrendingUp className="text-orange-500" size={32} />
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Hard</p>
-              <p className="text-3xl font-bold text-red-600 mt-1">
-                {stats?.problemsByDifficulty?.hard || 0}
-              </p>
-            </div>
-            <Award className="text-red-500" size={32} />
-          </div>
-        </div>
-      </div>
-
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
         <div className="flex items-center space-x-4">

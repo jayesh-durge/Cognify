@@ -65,7 +65,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <StatCard
           icon={<Trophy className="text-yellow-500" />}
           label="Problems Solved"
@@ -85,13 +85,6 @@ export default function Dashboard() {
           label="Total Interviews"
           value={stats?.totalInterviews || 0}
           trend="+2 this month"
-          trendUp={true}
-        />
-        <StatCard
-          icon={<Brain className="text-purple-500" />}
-          label="Readiness Level"
-          value={getReadinessLabel(stats?.avgInterviewScore || 0)}
-          trend="Keep improving!"
           trendUp={true}
         />
       </div>
