@@ -524,154 +524,44 @@ npm run dev
 
 ---
 
-## 🎥 Demo & Screenshots
+## 🎥 Screenshots
 
-### 🎬 Welcome Screen
 <div align="center">
-  <img src="screenshots/welcome.png" alt="Welcome Screen" width="800"/>
-  <p><em>Clean welcome page explaining features and quick setup guide</em></p>
-</div>
 
-**Features showcased:**
-- ✅ Supported platforms (LeetCode, CodeChef, Codeforces, GeeksforGeeks)
-- ✅ Key features overview with icons
-- ✅ Quick setup instructions
-- ✅ Direct links to get started
+### 📊 Main Dashboard
+<img src="screenshots/dashboard.png" alt="Main Dashboard" width="800"/>
+
+*Your personalized learning command center with progress tracking and analytics*
 
 ---
 
-### ⚙️ Extension Settings
-<div align="center">
-  <img src="screenshots/settings.png" alt="Settings Configuration" width="800"/>
-  <p><em>Simple API key configuration with step-by-step instructions</em></p>
-</div>
+### 🎬 Welcome Page
+<img src="screenshots/welcomepage.png" alt="Welcome Page" width="800"/>
 
-**Features showcased:**
-- ✅ Gemini API key input
-- ✅ Step-by-step guide to get API key
-- ✅ Clear instructions for Google AI Studio
-- ✅ Security note about local storage
-- ✅ Full-screen modal for better focus
+*Onboarding experience introducing key features and quick setup*
 
 ---
 
-### 🧠 AI Mentor Side Panel (LeetCode)
-<div align="center">
-  <img src="screenshots/leetcode-mentor.png" alt="AI Mentor on LeetCode" width="800"/>
-  <p><em>AI mentor analyzing "Merge k Sorted Lists" problem with intelligent hints</em></p>
-</div>
+### 📈 Progress Tracking
+<img src="screenshots/progresspage.png" alt="Progress Page" width="800"/>
 
-**Features showcased:**
-- ✅ Non-intrusive side panel design
-- ✅ Problem analysis with difficulty, topics, and estimated time
-- ✅ Practice vs Interview mode toggle
-- ✅ Real-time conversation with AI mentor
-- ✅ Socratic questioning approach
-- ✅ "Get Hint", "Analyze Code", "Mark Solved" buttons
-- ✅ Chat interface showing AI's guiding questions
-
-**AI Response Example:**
-> "That's a very insightful connection! Merge sort fundamentally breaks down a problem into smaller, similar subproblems and then combines their solutions."
-
----
-
-### 📊 Progress Dashboard
-<div align="center">
-  <img src="screenshots/progress.png" alt="Progress Tracking" width="800"/>
-  <p><em>Comprehensive view of all solved problems across platforms</em></p>
-</div>
-
-**Features showcased:**
-- ✅ Filter by difficulty (All, Easy, Medium, Hard)
-- ✅ Problem count badges
-- ✅ Complete problem history with titles
-- ✅ Difficulty tags with color coding
-- ✅ Platform identification (Leetcode badges)
-- ✅ Solved date tracking
-- ✅ Clean card-based layout
-
-**Sample Problems Shown:**
-- Swap Nodes in Pairs (Medium)
-- Valid Parentheses (Easy)
-- String to Integer (atoi) (Medium)
-- Two Best Non-Overlapping Events (Medium)
-- Container With Most Water (Medium)
+*Track all solved problems across platforms with difficulty filters*
 
 ---
 
 ### 🎤 Interview Reports
-<div align="center">
-  <img src="screenshots/interviews.png" alt="Interview Analytics" width="800"/>
-  <p><em>Detailed interview performance analysis with scoring</em></p>
-</div>
+<img src="screenshots/interviewreportpage.png" alt="Interview Reports" width="800"/>
 
-**Features showcased:**
-- ✅ Overall statistics (Total interviews, Avg scores)
-- ✅ Communication score (19/100)
-- ✅ Technical score (19/100)
-- ✅ Overall performance (19/100)
-- ✅ Individual interview cards with:
-  - Problem name and difficulty
-  - Platform badge (Leetcode)
-  - Duration and question count
-  - Color-coded score badges
-  - Expandable details
-
-**Sample Interviews:**
-- "Next Permutation" - 50/100 (1 min, 1 question)
-- "Swap Nodes in Pairs" - 0/100 (2 min, 1 question)
-- "Swap Nodes in Pairs" - 50/100 (5 min, 1 question)
-- "Merge k Sorted Lists" - 5/100 (1 min, 1 question)
+*Detailed interview analytics with scoring and performance metrics*
 
 ---
 
-### 📈 Main Dashboard
-<div align="center">
-  <img src="screenshots/dashboard.png" alt="Main Dashboard" width="800"/>
-  <p><em>Your personalized learning command center</em></p>
+### 🎯 Demo Presentation
+<img src="screenshots/demopresentation.png" alt="Demo Presentation" width="800"/>
+
+*Complete feature walkthrough and platform capabilities*
+
 </div>
-
-**Features showcased:**
-- ✅ Welcome message with personalization
-- ✅ Key metrics cards:
-  - 8 Problems Solved (+4 this week)
-  - 50/100 Interview Score (1 latest interview)
-  - 6 Total Interviews (6 this month)
-- ✅ Interview Performance Chart:
-  - Line graph showing progress over time
-  - Overall, Communication, and Technical scores
-  - 6 data points showing improvement trend
-- ✅ Recent Activity Feed:
-  - Completed interviews with scores
-  - Timestamp and problem details
-  - Auto-sync from extension
-- ✅ Modern dark theme UI
-- ✅ Responsive design
-
-**Performance Trend:**
-The chart shows improvement from initial low scores (~10-20) to better performance (50+), demonstrating the learning curve users experience with the platform.
-
----
-
-### 🎯 Key UI/UX Highlights
-
-#### Extension Integration
-- **Seamless:** Works directly on coding platforms without navigation
-- **Non-Intrusive:** Side panel doesn't block problem view
-- **Contextual:** AI knows what problem you're working on
-- **Fast:** Instant responses with 400-token optimized calls
-
-#### Dashboard Design
-- **Clean:** Modern card-based layout with dark theme
-- **Informative:** Charts and stats at a glance
-- **Actionable:** Quick access to interviews and progress
-- **Responsive:** Works on desktop, tablet, and mobile
-
-#### Color Coding
-- 🟢 **Green:** Easy difficulty, Good scores (50-100)
-- 🟡 **Orange/Yellow:** Medium difficulty, Average scores
-- 🔴 **Red:** Hard difficulty, Low scores (0-49)
-- 🔵 **Blue:** Platform badges and accents
 
 ---
 
