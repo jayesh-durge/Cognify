@@ -35,9 +35,6 @@ export default function Navbar() {
             <NavLink to="/progress">
               Progress
             </NavLink>
-            <NavLink to="/recommendations">
-              Recommendations
-            </NavLink>
           </div>
 
           {/* User Menu */}

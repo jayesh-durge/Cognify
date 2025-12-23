@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to Cognify</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 700px;
+      width: 100%;
+      background: white;
+      border-radius: 20px;
+      padding: 50px 40px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.5s ease-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .logo {
+      font-size: 60px;
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      font-size: 36px;
+      color: #333;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header p {
+      color: #666;
+      font-size: 18px;
+      line-height: 1.6;
+    }
+
+    .features {
+      margin: 40px 0;
+      padding: 30px 0;
+      border-top: 2px solid #f0f0f0;
+      border-bottom: 2px solid #f0f0f0;
+    }
+
+    .feature {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+
+    .feature:last-child {
+      margin-bottom: 0;
+    }
+
+    .feature-icon {
+      font-size: 32px;
+      margin-right: 15px;
+      flex-shrink: 0;
+    }
+
+    .feature-content h3 {
+      font-size: 18px;
+      color: #333;
+      margin-bottom: 5px;
+    }
+
+    .feature-content p {
+      color: #666;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .actions {
+      margin-top: 40px;
+    }
+
+    .action-title {
+      font-size: 20px;
+      color: #333;
+      margin-bottom: 20px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .action-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .action-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 12px;
+      padding: 25px 20px;
+      text-decoration: none;
+      color: white;
+      transition: transform 0.2s, box-shadow 0.2s;
+      text-align: center;
+      display: block;
+    }
+
+    .action-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+
+    .action-card-icon {
+      font-size: 40px;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .action-card-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .action-card-desc {
+      font-size: 13px;
+      opacity: 0.9;
+    }
+
+    .start-btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .start-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .footer {
+      margin-top: 30px;
+      text-align: center;
+      color: #999;
+      font-size: 13px;
+    }
+
+    .footer a {
+      color: #667eea;
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 600px) {
+      .action-cards {
+        grid-template-columns: 1fr;
+      }
+      
+      .container {
+        padding: 30px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">🚀</div>
+      <h1>Welcome to Cognify!</h1>
+      <p>Your AI-powered mentor for mastering coding interviews. Let's get you started on your journey to success.</p>
+    </div>
+
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">🎯</div>
+        <div class="feature-content">
+          <h3>AI Interview Practice</h3>
+          <p>Simulate real interviews with automated questions and instant feedback on your communication and problem-solving.</p>
+        </div>
+      </div>
+
+      <div class="feature">
+        <div class="feature-icon">💡</div>
+        <div class="feature-content">
+          <h3>Socratic Mentoring</h3>
+          <p>Get hints that guide your thinking, not solutions. Learn to solve problems independently.</p>
+        </div>
+      </div>
+
+      <div class="feature">
+        <div class="feature-icon">📊</div>
+        <div class="feature-content">
+          <h3>Track Your Progress</h3>
+          <p>Monitor your improvement with detailed analytics and personalized recommendations.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <h2 class="action-title">Quick Setup</h2>
+      
+      <div class="action-cards">
+        <a href="../settings/settings.html" class="action-card">
+          <span class="action-card-icon">⚙️</span>
+          <div class="action-card-title">Add API Key</div>
+          <div class="action-card-desc">Configure your Gemini API key to enable AI features</div>
+        </a>
+
+        <a href="https://cognify-dashboard.vercel.app" target="_blank" class="action-card">
+          <span class="action-card-icon">📈</span>
+          <div class="action-card-title">Dashboard</div>
+          <div class="action-card-desc">View your stats and progress in the web dashboard</div>
+        </a>
+      </div>
+
+      <button class="start-btn" id="startBtn">Start Practicing on LeetCode</button>
+    </div>
+
+    <div class="footer">
+      <p>Need help? Visit our <a href="https://github.com/jayesh-durge/Cognify" target="_blank">GitHub</a> for documentation.</p>
+    </div>
+  </div>
+
+  <script src="welcome.js"></script>
+</body>
+</html>

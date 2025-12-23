@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { getUserStats, getInterviewReports, getUserActivities, getProgressData, getUserProblems, getUserAnalytics } from '../services/firebase'
+import { getUserStats, getInterviewReports, getUserActivities, getProgressData, getUserProblems, getUserAnalytics, getTopicProficiency } from '../services/firebase'
 import { TrendingUp, Trophy, Target, Clock, Award, Brain, Activity, Zap, CheckCircle, Code } from 'lucide-react'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [progressData, setProgressData] = useState(null)
   const [problems, setProblems] = useState([])
   const [analytics, setAnalytics] = useState(null)
+  const [topicData, setTopicData] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -29,13 +30,14 @@ export default function Dashboard() {
     setLoading(true)
 
     // Load all data including problems for accurate count
-    const [statsResult, interviewsResult, activitiesResult, progressResult, problemsResult, analyticsResult] = await Promise.all([
+    const [statsResult, interviewsResult, activitiesResult, progressResult, problemsResult, analyticsResult, topicResult] = await Promise.all([
       getUserStats(user.uid),
       getInterviewReports(user.uid, 20), // Fetch last 20 interviews for better graph
       getUserActivities(user.uid, 20),
       getProgressData(user.uid),
       getUserProblems(user.uid, 1000),
-      getUserAnalytics(user.uid)
+      getUserAnalytics(user.uid),
+      getTopicProficiency(user.uid)
     ])
 
     console.log('📈 Stats loaded:', statsResult.data)
@@ -54,6 +56,7 @@ export default function Dashboard() {
     if (activitiesResult.data) setActivities(activitiesResult.data)
     if (progressResult.data) setProgressData(progressResult.data)
     if (problemsResult.data) setProblems(problemsResult.data)
+    if (topicResult.data) setTopicData(topicResult.data)
     if (analyticsResult.data) setAnalytics(analyticsResult.data)
 
     setLoading(false)
@@ -103,8 +106,8 @@ export default function Dashboard() {
           icon={<Target className="text-primary-500" />}
           label="Interview Score"
           value={recentInterviews.length > 0 
-            ? `${recentInterviews[0]?.scores?.overall || recentInterviews[0]?.overallScore || 0}/10`
-            : '0/10'
+            ? `${recentInterviews[0]?.scores?.overall || recentInterviews[0]?.overallScore || 0}/100`
+            : '0/100'
           }
           trend={recentInterviews.length > 0 ? 'Latest interview' : 'No interviews yet'}
           trendUp={true}
@@ -187,11 +190,11 @@ export default function Dashboard() {
                   axisLine={{ stroke: '#374151' }}
                 />
                 <YAxis 
-                  domain={[0, 10]} 
+                  domain={[0, 100]} 
                   stroke="#9ca3af"
                   tick={{ fill: '#9ca3af', fontSize: 12 }}
                   axisLine={{ stroke: '#374151' }}
-                  ticks={[0, 2, 4, 6, 8, 10]}
+                  ticks={[0, 20, 40, 60, 80, 100]}
                 />
                 <Tooltip 
                   contentStyle={{ 
@@ -207,7 +210,7 @@ export default function Dashboard() {
                       communication: 'Communication',
                       technical: 'Technical'
                     };
-                    return [`${value}/10`, labels[name] || name];
+                    return [`${value}/100`, labels[name] || name];
                   }}
                   labelFormatter={(label, payload) => {
                     if (payload && payload[0]) {
@@ -246,113 +249,81 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Analytics Section - Strengths & Weaknesses */}
-      {analytics && (
+      {/* Topics Section - AI-Based Classification */}
+      {topicData && (topicData.strengths?.length > 0 || topicData.weaknesses?.length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Strengths */}
+          {/* Strong Topics */}
           <div className="bg-gradient-to-br from-green-900/20 to-gray-800 rounded-xl shadow-lg p-6 border border-green-700/30">
             <div className="flex items-center gap-3 mb-4">
-              <Trophy className="text-green-500" size={24} />
-              <h3 className="text-lg font-semibold text-white">Your Strengths</h3>
+              <Award className="text-green-500" size={20} />
+              <h3 className="text-lg font-semibold text-white">Strong Topics</h3>
+              <span className="ml-auto text-xs text-gray-500 italic">AI-analyzed</span>
             </div>
-            <p className="text-sm text-gray-400 mb-4">
-              Topics where you consistently need fewer hints (&lt; 2 avg)
-            </p>
-            {analytics.strengths && analytics.strengths.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {analytics.strengths.map((strength, idx) => (
-                  <span
-                    key={idx}
-                    className="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-sm font-medium border border-green-500/30"
-                  >
-                    {strength}
-                  </span>
-                ))}
+            {topicData.strengths && topicData.strengths.length > 0 ? (
+              <div className="space-y-2">
+                {topicData.strengths.map((topic, idx) => {
+                  const performance = topicData.topicPerformance?.[topic]
+                  const proficiency = performance 
+                    ? Math.round((performance.strong / performance.total) * 100) 
+                    : 100
+                  
+                  return (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                      <div className="flex-1">
+                        <span className="font-medium text-gray-200">{topic}</span>
+                        {performance && (
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            {performance.total} solved • {proficiency}% success
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-green-400 text-sm font-semibold">✓ Proficient</span>
+                    </div>
+                  )
+                })}
               </div>
             ) : (
-              <p className="text-gray-500 italic">
-                Complete more problems to identify your strengths
+              <p className="text-gray-500 text-sm italic">
+                Complete interviews or solve problems to identify your strengths
               </p>
-            )}
-            {analytics.totalInterviews > 0 && (
-              <div className="mt-4 pt-4 border-t border-green-700/20">
-                <p className="text-xs text-gray-400">
-                  Based on {analytics.totalInterviews} interview{analytics.totalInterviews !== 1 ? 's' : ''} and {analytics.totalPractice || 0} practice session{analytics.totalPractice !== 1 ? 's' : ''}
-                </p>
-              </div>
             )}
           </div>
 
-          {/* Weaknesses */}
+          {/* Focus Areas */}
           <div className="bg-gradient-to-br from-orange-900/20 to-gray-800 rounded-xl shadow-lg p-6 border border-orange-700/30">
             <div className="flex items-center gap-3 mb-4">
-              <Target className="text-orange-500" size={24} />
-              <h3 className="text-lg font-semibold text-white">Areas to Improve</h3>
+              <Target className="text-orange-500" size={20} />
+              <h3 className="text-lg font-semibold text-white">Focus Areas</h3>
+              <span className="ml-auto text-xs text-gray-500 italic">AI-analyzed</span>
             </div>
-            <p className="text-sm text-gray-400 mb-4">
-              Topics where you need more practice (≥ 3 hints avg)
-            </p>
-            {analytics.weaknesses && analytics.weaknesses.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {analytics.weaknesses.map((weakness, idx) => (
-                  <span
-                    key={idx}
-                    className="px-3 py-1.5 bg-orange-500/20 text-orange-400 rounded-lg text-sm font-medium border border-orange-500/30"
-                  >
-                    {weakness}
-                  </span>
-                ))}
+            {topicData.weaknesses && topicData.weaknesses.length > 0 ? (
+              <div className="space-y-2">
+                {topicData.weaknesses.map((topic, idx) => {
+                  const performance = topicData.topicPerformance?.[topic]
+                  
+                  return (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+                      <div className="flex-1">
+                        <span className="font-medium text-gray-200">{topic}</span>
+                        {performance && (
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            {performance.total} attempted • Needs improvement
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-orange-400 text-sm font-semibold">Practice more</span>
+                    </div>
+                  )
+                })}
               </div>
             ) : (
-              <p className="text-gray-500 italic">
-                Complete more problems to identify areas for improvement
+              <p className="text-gray-500 text-sm italic">
+                Complete interviews or solve problems to identify areas for improvement
               </p>
-            )}
-            {analytics.avgOverallScore > 0 && (
-              <div className="mt-4 pt-4 border-t border-orange-700/20">
-                <p className="text-xs text-gray-400">
-                  Average Interview Score: <span className="text-white font-semibold">{analytics.avgOverallScore}/10</span>
-                </p>
-              </div>
             )}
           </div>
         </div>
       )}
-
-      {/* Topics Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Strong Topics */}
-        <div className="bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-700">
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-            <Award className="text-green-500 mr-2" size={20} />
-            Strong Topics
-          </h3>
-          <div className="space-y-2">
-            {(stats?.strongTopics || ['Arrays', 'Strings']).map((topic, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                <span className="font-medium text-gray-200">{topic}</span>
-                <span className="text-green-400 text-sm font-semibold">✓ Proficient</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Weak Topics */}
-        <div className="bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-700">
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-            <Target className="text-orange-500 mr-2" size={20} />
-            Focus Areas
-          </h3>
-          <div className="space-y-2">
-            {(stats?.weakTopics || ['Dynamic Programming', 'Graphs']).map((topic, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
-                <span className="font-medium text-gray-200">{topic}</span>
-                <span className="text-orange-400 text-sm font-semibold">Practice more</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
       {/* Recent Activity and Progress */}
       <div className="grid grid-cols-1 gap-6">

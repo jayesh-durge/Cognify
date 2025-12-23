@@ -22,6 +22,57 @@ const sessionManager = new SessionManager();
   console.log('✅ Auth service initialized');
 })();
 
+/**
+ * Setup alarm to reset problemsToday counter at midnight
+ */
+function setupMidnightReset() {
+  // Clear any existing alarm
+  chrome.alarms.clear('midnightReset');
+  
+  // Calculate milliseconds until midnight
+  const now = new Date();
+  const midnight = new Date();
+  midnight.setHours(24, 0, 0, 0);
+  const msUntilMidnight = midnight.getTime() - now.getTime();
+  
+  // Create alarm for midnight, then repeat every 24 hours
+  chrome.alarms.create('midnightReset', {
+    when: Date.now() + msUntilMidnight,
+    periodInMinutes: 24 * 60 // Repeat every 24 hours
+  });
+  
+  console.log('⏰ Midnight reset alarm set for:', midnight.toLocaleString());
+}
+
+// Listen for alarm to reset counter
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'midnightReset') {
+    console.log('🌅 Midnight reset triggered');
+    chrome.storage.local.set({
+      problemsToday: 0,
+      lastResetDate: new Date().toDateString()
+    });
+  }
+});
+
+// Check if we need to reset counter on startup (in case extension was reloaded)
+chrome.runtime.onStartup.addListener(async () => {
+  const result = await chrome.storage.local.get(['lastResetDate', 'problemsToday']);
+  const today = new Date().toDateString();
+  
+  if (result.lastResetDate !== today) {
+    // It's a new day, reset counter
+    await chrome.storage.local.set({
+      problemsToday: 0,
+      lastResetDate: today
+    });
+    console.log('🌅 Counter reset for new day');
+  }
+  
+  // Ensure alarm is set
+  setupMidnightReset();
+});
+
 // Service worker lifecycle
 chrome.runtime.onInstalled.addListener(async (details) => {
   console.log('Cognify AI Mentor installed:', details.reason);
@@ -29,6 +80,8 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   // Initialize default settings
   await chrome.storage.local.set({
     mode: 'practice', // practice, interview, learning
+    problemsToday: 0,
+    lastResetDate: new Date().toDateString(),
     settings: {
       enableVoice: false,
       interviewDuration: 45, // minutes
@@ -40,6 +93,9 @@ chrome.runtime.onInstalled.addListener(async (details) => {
       currentStep: 0
     }
   });
+  
+  // Set up midnight reset alarm
+  setupMidnightReset();
 
   // Open onboarding on first install
   if (details.reason === 'install') {
@@ -429,17 +485,20 @@ async function handleHintRequest(data, sender) {
       console.log('  • userAnswer:', userQuestion);
       console.log('  • userCode:', userCode ? userCode.substring(0, 100) + '...' : 'No code');
       
-      console.log('\n🚀 Calling AI to score answer...');
+      console.log('\n🚀 Calling AI to score answer and generate follow-up...');
       
-      // User is answering the interview question - score it
-      const score = await geminiService.scoreInterviewAnswer({
+      // User is answering the interview question - score it AND get follow-up
+      const result = await geminiService.scoreAndRespond({
         question: session.interviewState.currentQuestion,
         answer: userQuestion,
-        code: userCode
+        code: userCode,
+        problem: session.currentProblem,
+        questionsAsked: session.interviewState.questionsAsked
       });
       
       console.log('\n✅ AI RESPONSE RECEIVED!');
-      console.log('📦 Score object:', JSON.stringify(score, null, 2));
+      console.log('📦 Score object:', JSON.stringify(result.scores, null, 2));
+      console.log('💬 Follow-up message:', result.followUpMessage);
       
       console.log('\n✅ ANSWER SUCCESSFULLY SCORED!');
       console.log('📋 Score Entry Details:');
@@ -449,7 +508,7 @@ async function handleHintRequest(data, sender) {
         questionNumber: session.interviewState.questionsAsked,
         question: session.interviewState.currentQuestion,
         answer: userQuestion,
-        scores: score,
+        scores: result.scores,
         timestamp: Date.now()
       };
       
@@ -482,22 +541,36 @@ async function handleHintRequest(data, sender) {
       
       await sessionManager.saveSession(sender.tab.id, session);
       
-      // Return empty response (no message shown)
+      // Return follow-up message (scores stored but not shown in chat)
       return {
         success: true,
         hint: {
-          question: '', // Empty - don't show in chat
-          metadata: { scoredAnswer: true }
+          question: result.followUpMessage,
+          metadata: { scoredAnswer: true, hideScore: true }
         },
         mode: 'interview'
       };
     } else {
-      // User is chatting (not answering a question) - respond as interviewer
+      // User is chatting (not answering a question)
       console.log('\n💬 INTERVIEW CONVERSATION MODE');
       console.log('📌 Interview State:');
       console.log('  • awaitingAnswer:', session.interviewState.awaitingAnswer);
       console.log('  • questionsAsked:', session.interviewState.questionsAsked);
       console.log('  • userMessage:', userQuestion);
+      
+      // Check if user message is just a casual acknowledgment after scoring
+      const casualAcks = /^(ok|okay|sure|yes|no|nope|yeah|yep|got it|thanks|thank you|alright|fine|noted|understood)$/i;
+      if (casualAcks.test(userQuestion.trim())) {
+        console.log('⚠️ Detected casual acknowledgment - not generating response');
+        return {
+          success: true,
+          hint: {
+            question: 'Please continue with your solution. I\'ll ask the next question soon.',
+            metadata: { casualAck: true }
+          },
+          mode: 'interview'
+        };
+      }
       
       console.log('\n🚀 Calling AI for conversational response...');
       
@@ -813,7 +886,7 @@ async function handleProblemSolved(data, sender) {
         finalScores: finalScores,
         strengths: finalScores.strengths || [],
         areasToImprove: finalScores.improvements || [],
-        feedback: `Interview completed with ${session.interviewState.questionsAsked} questions. Overall performance: ${finalScores.overall}/10`,
+        feedback: `Interview completed with ${session.interviewState.questionsAsked} questions. Overall performance: ${finalScores.overall}/100`,
         // Add scores object for dashboard compatibility
         scores: {
           communication: finalScores.communication,
@@ -846,51 +919,124 @@ async function handleProblemSolved(data, sender) {
       
       console.log('📊 Interview scores calculated and saved:', finalScores);
       
-      // Return scores to be displayed in UI
-      return {
-        success: true,
-        interviewComplete: true,
-        scores: finalScores,
-        message: 'Interview completed! Scores saved to dashboard.',
-        reportId: saveResult.interviewId
-      };
+    // Analyze topic proficiency with AI
+    const problemTags = session.currentProblem?.tags || problemData.tags || [];
+    if (problemTags.length > 0) {
+      console.log('🤖 Analyzing topic proficiency for:', problemTags);
+      try {
+        const topicAnalysis = await geminiService.analyzeTopicProficiency({
+          problemTags,
+          hintsUsed: session.hints?.length || 0,
+          interviewScores: finalScores,
+          userAnswer: session.interviewState.scores[0]?.answer || '',
+          problemDifficulty: problemData.difficulty
+        });
+        
+        console.log('✅ Topic analysis complete:', topicAnalysis);
+        
+        // Update user's topic proficiency in Firebase
+        await firebaseService.updateTopicProficiency({
+          topics: topicAnalysis,
+          problemId: problemData.problemId || problemData.title,
+          timestamp: Date.now()
+        });
+      } catch (error) {
+        console.error('❌ Topic analysis failed:', error);
+      }
     }
     
-    // Log to Firebase (for both practice and interview modes)
-    console.log('💾 Logging problem to Firebase...');
-    await firebaseService.logProblemSolved(fullProblemData);
+    // Update problemsToday counter for interview completion
+    await updateProblemsToday();
     
-    // Update analytics for practice mode too
-    if (mode === 'practice') {
-      const practiceAnalytics = await calculateTagPerformance(session, {
-        tags: fullProblemData.tags,
-        hintsUsed: fullProblemData.hintsUsed
-      });
-      
-      await firebaseService.updateAnalytics({
-        practiceCompleted: true,
-        interviewCompleted: false,
-        strengths: practiceAnalytics.strengths,
-        weaknesses: practiceAnalytics.weaknesses
-      });
-    }
-    
-    // Clear session
-    await sessionManager.clearSession(sender.tab.id);
-    
-    console.log('✅ Problem logged successfully');
-    
+    // Return scores to be displayed in UI
     return {
       success: true,
-      message: mode === 'interview' ? 'Interview completed! Scores saved to dashboard.' : 'Problem logged to dashboard!'
+      interviewComplete: true,
+      scores: finalScores,
+      message: 'Interview completed! Scores saved to dashboard.',
+      reportId: saveResult.interviewId
     };
-  } catch (error) {
-    console.error('❌❌❌ CRITICAL ERROR in handleProblemSolved:', error);
-    console.error('❌ Error stack:', error.stack);
-    return {
-      success: false,
-      error: error.message
-    };
+  }
+  
+  // Update problemsToday counter for practice mode
+  await updateProblemsToday();
+  
+  // Log to Firebase (for both practice and interview modes)
+  console.log('💾 Logging problem to Firebase...');
+  await firebaseService.logProblemSolved(fullProblemData);
+  
+  // Analyze topics for practice mode too
+  if (mode === 'practice') {
+    const problemTags = session.currentProblem?.tags || problemData.tags || [];
+    if (problemTags.length > 0) {
+      console.log('🤖 Analyzing topic proficiency for practice:', problemTags);
+      try {
+        const topicAnalysis = await geminiService.analyzeTopicProficiency({
+          problemTags,
+          hintsUsed: session.hints?.length || 0,
+          problemDifficulty: problemData.difficulty
+        });
+        
+        await firebaseService.updateTopicProficiency({
+          topics: topicAnalysis,
+          problemId: problemData.problemId || problemData.title,
+          timestamp: Date.now()
+        });
+      } catch (error) {
+        console.error('❌ Topic analysis failed:', error);
+      }
+    }
+    
+    const practiceAnalytics = await calculateTagPerformance(session, {
+      tags: fullProblemData.tags,
+      hintsUsed: fullProblemData.hintsUsed
+    });
+    
+    await firebaseService.updateAnalytics({
+      practiceCompleted: true,
+      interviewCompleted: false,
+      strengths: practiceAnalytics.strengths,
+      weaknesses: practiceAnalytics.weaknesses
+    });
+  }
+  
+  // Clear session
+  await sessionManager.clearSession(sender.tab.id);
+  
+  console.log('✅ Problem logged successfully');
+  
+  return {
+    success: true,
+    message: mode === 'interview' ? 'Interview completed! Scores saved to dashboard.' : 'Problem logged to dashboard!'
+  };
+} catch (error) {
+  console.error('❌❌❌ CRITICAL ERROR in handleProblemSolved:', error);
+  console.error('❌ Error stack:', error.stack);
+  return {
+    success: false,
+    error: error.message
+  };
+}
+}
+
+/**
+ * Update problems solved today counter
+ */
+async function updateProblemsToday() {
+  const result = await chrome.storage.local.get(['problemsToday', 'lastResetDate']);
+  const today = new Date().toDateString();
+  
+  // Check if we need to reset (in case alarm didn't fire)
+  if (result.lastResetDate !== today) {
+    await chrome.storage.local.set({
+      problemsToday: 1,
+      lastResetDate: today
+    });
+    console.log('🎯 Problems today: 1 (new day)');
+  } else {
+    const newCount = (result.problemsToday || 0) + 1;
+    await chrome.storage.local.set({ problemsToday: newCount });
+    console.log('🎯 Problems today:', newCount);
   }
 }
 
@@ -910,10 +1056,10 @@ function calculateInterviewScores(interviewState) {
     };
   }
   
-  // Average all scores
-  const avgCommunication = scores.reduce((sum, s) => sum + (s.scores.communication || 0), 0) / scores.length;
-  const avgCorrectness = scores.reduce((sum, s) => sum + (s.scores.correctness || 0), 0) / scores.length;
-  const avgDepth = scores.reduce((sum, s) => sum + (s.scores.depth || 0), 0) / scores.length;
+  // Average all scores (already 0-100)
+  const avgCommunication = Math.round(scores.reduce((sum, s) => sum + (s.scores.communication || 0), 0) / scores.length);
+  const avgCorrectness = Math.round(scores.reduce((sum, s) => sum + (s.scores.correctness || 0), 0) / scores.length);
+  const avgDepth = Math.round(scores.reduce((sum, s) => sum + (s.scores.depth || 0), 0) / scores.length);
   
   // Technical score = average of correctness and depth
   const technical = Math.round((avgCorrectness + avgDepth) / 2);
@@ -921,21 +1067,21 @@ function calculateInterviewScores(interviewState) {
   // Overall score = weighted average
   const overall = Math.round((avgCommunication * 0.3 + avgCorrectness * 0.4 + avgDepth * 0.3));
   
-  // Determine strengths and improvements
+  // Determine strengths and improvements (using 0-100 scale)
   const strengths = [];
   const improvements = [];
   
-  if (avgCommunication >= 7) strengths.push('Clear communication');
-  else if (avgCommunication < 5) improvements.push('Improve explanation clarity');
+  if (avgCommunication >= 70) strengths.push('Clear communication');
+  else if (avgCommunication < 50) improvements.push('Improve explanation clarity');
   
-  if (avgCorrectness >= 7) strengths.push('Accurate answers');
-  else if (avgCorrectness < 5) improvements.push('Focus on answer accuracy');
+  if (avgCorrectness >= 70) strengths.push('Accurate answers');
+  else if (avgCorrectness < 50) improvements.push('Focus on answer accuracy');
   
-  if (avgDepth >= 7) strengths.push('Deep technical understanding');
-  else if (avgDepth < 5) improvements.push('Develop deeper technical knowledge');
+  if (avgDepth >= 70) strengths.push('Deep technical understanding');
+  else if (avgDepth < 50) improvements.push('Develop deeper technical knowledge');
   
   return {
-    communication: Math.round(avgCommunication),
+    communication: avgCommunication,
     technical: technical,
     overall: overall,
     strengths: strengths,

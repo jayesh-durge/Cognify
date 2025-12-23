@@ -416,6 +416,101 @@
 
     // Mark as solved
     document.getElementById('cognify-solved').addEventListener('click', markProblemSolved);
+    
+    // Make panel draggable
+    makePanelDraggable();
+  }
+
+  /**
+   * Make the mentor panel draggable
+   */
+  function makePanelDraggable() {
+    const header = document.querySelector('.cognify-header');
+    const panel = document.getElementById('cognify-mentor-panel');
+    
+    if (!header || !panel) return;
+    
+    let isDragging = false;
+    let currentX;
+    let currentY;
+    let initialX;
+    let initialY;
+    let xOffset = 0;
+    let yOffset = 0;
+    
+    // Get initial position (bottom-right)
+    const rect = panel.getBoundingClientRect();
+    xOffset = rect.left;
+    yOffset = rect.top;
+    
+    header.addEventListener('mousedown', dragStart);
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('mouseup', dragEnd);
+    
+    function dragStart(e) {
+      // Only allow dragging from header, not from minimize button
+      if (e.target.classList.contains('cognify-minimize')) return;
+      
+      initialX = e.clientX - xOffset;
+      initialY = e.clientY - yOffset;
+      
+      isDragging = true;
+      panel.style.transition = 'none'; // Disable transition during drag
+    }
+    
+    function drag(e) {
+      if (!isDragging) return;
+      
+      e.preventDefault();
+      
+      currentX = e.clientX - initialX;
+      currentY = e.clientY - initialY;
+      
+      xOffset = currentX;
+      yOffset = currentY;
+      
+      // Keep panel within viewport bounds
+      const panelRect = panel.getBoundingClientRect();
+      const maxX = window.innerWidth - panelRect.width;
+      const maxY = window.innerHeight - panelRect.height;
+      
+      xOffset = Math.max(0, Math.min(xOffset, maxX));
+      yOffset = Math.max(0, Math.min(yOffset, maxY));
+      
+      setTranslate(xOffset, yOffset, panel);
+    }
+    
+    function dragEnd() {
+      if (!isDragging) return;
+      
+      initialX = currentX;
+      initialY = currentY;
+      isDragging = false;
+      
+      // Re-enable transition
+      panel.style.transition = 'all 0.3s ease';
+      
+      // Save position to storage
+      chrome.storage.local.set({
+        panelPosition: { x: xOffset, y: yOffset }
+      });
+    }
+    
+    function setTranslate(xPos, yPos, el) {
+      el.style.left = xPos + 'px';
+      el.style.top = yPos + 'px';
+      el.style.bottom = 'auto';
+      el.style.right = 'auto';
+    }
+    
+    // Restore saved position
+    chrome.storage.local.get(['panelPosition'], (result) => {
+      if (result.panelPosition) {
+        xOffset = result.panelPosition.x;
+        yOffset = result.panelPosition.y;
+        setTranslate(xOffset, yOffset, panel);
+      }
+    });
   }
 
   /**
@@ -643,9 +738,9 @@
           
           // Display comprehensive score breakdown
           const scoreMessage = `🎉 Interview Complete!\n\n📊 Final Scores:\n` +
-            `• Communication: ${response.scores.communication}/10\n` +
-            `• Technical: ${response.scores.technical}/10\n` +
-            `• Overall: ${response.scores.overall}/10\n\n` +
+            `• Communication: ${response.scores.communication}/100\n` +
+            `• Technical: ${response.scores.technical}/100\n` +
+            `• Overall: ${response.scores.overall}/100\n\n` +
             (response.scores.strengths.length > 0 ? `💪 Strengths: ${response.scores.strengths.join(', ')}\n` : '') +
             (response.scores.improvements.length > 0 ? `📈 Areas to Improve: ${response.scores.improvements.join(', ')}\n\n` : '') +
             `✅ Report saved to your dashboard!`;

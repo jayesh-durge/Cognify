@@ -64,7 +64,8 @@
     "scripting",
     "sidePanel",
     "activeTab",
-    "identity"
+    "identity",
+    "alarms"
   ],
 
   "host_permissions": [

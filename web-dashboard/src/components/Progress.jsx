@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { getUserProblems, getUserStats } from '../services/firebase'
-import { Calendar, TrendingUp, Award, CheckCircle } from 'lucide-react'
+import { getUserProblems, getUserStats, getTopicProficiency } from '../services/firebase'
+import { Calendar, TrendingUp, Award, CheckCircle, Trophy, Target } from 'lucide-react'
 
 export default function Progress() {
   const { user } = useAuth()
   const [problems, setProblems] = useState([])
   const [stats, setStats] = useState(null)
+  const [topicData, setTopicData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all') // all, easy, medium, hard
 
@@ -26,6 +27,10 @@ export default function Progress() {
     // Load stats
     const { data: statsData } = await getUserStats(user.uid)
     setStats(statsData)
+    
+    // Load topic proficiency
+    const { data: topicProficiencyData } = await getTopicProficiency(user.uid)
+    setTopicData(topicProficiencyData)
 
     setLoading(false)
   }
@@ -95,6 +100,80 @@ export default function Progress() {
           </button>
         </div>
       </div>
+
+      {/* Strong Topics & Focus Areas */}
+      {topicData && (topicData.strengths?.length > 0 || topicData.weaknesses?.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Strong Topics */}
+          <div className="bg-gradient-to-br from-green-900/20 to-gray-800 rounded-xl shadow-lg p-6 border border-green-700/30">
+            <div className="flex items-center gap-3 mb-4">
+              <Trophy className="text-green-500" size={24} />
+              <h3 className="text-lg font-semibold text-white">Strong Topics</h3>
+            </div>
+            {topicData.strengths && topicData.strengths.length > 0 ? (
+              <div className="space-y-3">
+                {topicData.strengths.map((topic, idx) => {
+                  const performance = topicData.topicPerformance?.[topic]
+                  const proficiency = performance 
+                    ? Math.round((performance.strong / performance.total) * 100) 
+                    : 100
+                  
+                  return (
+                    <div key={idx} className="bg-green-500/10 border border-green-700/30 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-green-400 font-medium">{topic}</span>
+                        <span className="text-green-500 text-sm">✓ Proficient</span>
+                      </div>
+                      {performance && (
+                        <div className="text-xs text-gray-400">
+                          {performance.total} problem{performance.total !== 1 ? 's' : ''} solved • {proficiency}% success rate
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-gray-500 italic">
+                Complete more problems to identify your strengths
+              </p>
+            )}
+          </div>
+
+          {/* Focus Areas */}
+          <div className="bg-gradient-to-br from-orange-900/20 to-gray-800 rounded-xl shadow-lg p-6 border border-orange-700/30">
+            <div className="flex items-center gap-3 mb-4">
+              <Target className="text-orange-500" size={24} />
+              <h3 className="text-lg font-semibold text-white">Focus Areas</h3>
+            </div>
+            {topicData.weaknesses && topicData.weaknesses.length > 0 ? (
+              <div className="space-y-3">
+                {topicData.weaknesses.map((topic, idx) => {
+                  const performance = topicData.topicPerformance?.[topic]
+                  
+                  return (
+                    <div key={idx} className="bg-orange-500/10 border border-orange-700/30 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-orange-400 font-medium">{topic}</span>
+                        <span className="text-orange-500 text-sm">Practice more</span>
+                      </div>
+                      {performance && (
+                        <div className="text-xs text-gray-400">
+                          {performance.total} problem{performance.total !== 1 ? 's' : ''} attempted • Needs improvement
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-gray-500 italic">
+                Complete more problems to identify areas for improvement
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Problems List */}
       <div className="bg-gray-800 rounded-xl shadow-lg border border-gray-700">

@@ -5,7 +5,6 @@ import Navbar from './components/Navbar'
 import Dashboard from './components/Dashboard'
 import InterviewReports from './components/InterviewReports'
 import Progress from './components/Progress'
-import Recommendations from './components/Recommendations'
 import Login from './components/Login'
 import Settings from './components/Settings'
 
@@ -43,7 +42,6 @@ function AppRoutes() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/interviews" element={<InterviewReports />} />
           <Route path="/progress" element={<Progress />} />
-          <Route path="/recommendations" element={<Recommendations />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

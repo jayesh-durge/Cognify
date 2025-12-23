@@ -250,5 +250,36 @@ export async function getUserAnalytics(userId) {
   }
 }
 
+/**
+ * Get user's topic proficiency data
+ */
+export async function getTopicProficiency(userId) {
+  console.log('🎯 Fetching topic proficiency for user:', userId)
+  
+  try {
+    const topicsRef = doc(db, 'users', userId, 'analytics', 'topics')
+    const topicsSnap = await getDoc(topicsRef)
+    
+    if (topicsSnap.exists()) {
+      const data = topicsSnap.data()
+      console.log('✅ Topic proficiency found:', data)
+      return { success: true, data }
+    } else {
+      console.log('⚠️ No topic proficiency data found')
+      return {
+        success: true,
+        data: {
+          strengths: [],
+          weaknesses: [],
+          topicPerformance: {}
+        }
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error fetching topic proficiency:', error)
+    return { success: false, error: error.message, data: null }
+  }
+}
+
 export { auth, db, analytics }
 export default app

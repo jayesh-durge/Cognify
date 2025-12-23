@@ -47,14 +47,27 @@ export class GeminiService {
         .replace('{{constraints}}', problemData.constraints || '')
         .replace('{{examples}}', JSON.stringify(problemData.examples || []));
 
-      const response = await this.callGemini(prompt, {
+      const response = await this.callGemini(prompt + '\n\nBe concise and brief.', {
         temperature: 0.3,
-        maxTokens: 500
+        maxTokens: 300
       });
 
       return this.parseAnalysis(response);
     } catch (error) {
       console.error('❌ Analysis failed:', error.message);
+      
+      // Check if it's a quota error
+      if (error.message.includes('credits exhausted') || error.message.includes('quota')) {
+        return {
+          difficulty: problemData.difficulty || 'medium',
+          topics: problemData.tags || [],
+          patterns: ['⚠️ AI credits exhausted'],
+          estimatedTime: 30,
+          prerequisites: [],
+          summary: `⚠️ AI analysis unavailable - credits exhausted.\\n\\nCreate new Google AI Studio project and update API key in settings, or wait 24 hours for quota reset.`
+        };
+      }
+      
       // Return fallback analysis so UI doesn't hang
       return this.getFallbackAnalysis(problemData);
     }
@@ -78,14 +91,20 @@ export class GeminiService {
       .replace('{{previous_questions}}', previousQuestions.join('; ') || 'None');
 
     try {
-      const response = await this.callGemini(prompt + '\n\nIMPORTANT: Keep your question concise (1-2 sentences max).', {
+      const response = await this.callGemini(prompt + '\n\nGenerate one clear interview question.', {
         temperature: 0.7,
-        maxTokens: 150
+        maxTokens: 250
       });
 
       return response.text;
     } catch (error) {
       console.error('Error generating interview question:', error);
+      
+      // Check if it's a quota error
+      if (error.message.includes('credits exhausted') || error.message.includes('quota')) {
+        return `⚠️ AI credits exhausted. Update API key in settings or wait 24 hours.`;
+      }
+      
       return this.getFallbackInterviewQuestion(questionNumber);
     }
   }
@@ -115,9 +134,9 @@ export class GeminiService {
     console.log('⏱️ Timestamp:', new Date().toLocaleTimeString());
 
     try {
-      const response = await this.callGemini(prompt + '\n\nIMPORTANT: Keep brief_feedback to 1 sentence only.', {
+      const response = await this.callGemini(prompt + '\n\nProvide JSON with scores and brief feedback.', {
         temperature: 0.3,
-        maxTokens: 250
+        maxTokens: 300
       });
 
       console.log('\n📥 RAW AI RESPONSE:');
@@ -125,40 +144,69 @@ export class GeminiService {
       console.log(response.text);
       console.log('-----------------------------------------------------------------\n');
 
-      // Parse JSON from response - handle markdown blocks
+      // Parse JSON from response - handle multiple markdown formats
       let jsonString = response.text.trim();
-      const jsonMatch = jsonString.match(/```json\s*([\s\S]*?)```/);
       
+      // Try extracting from ```json ... ``` blocks
+      let jsonMatch = jsonString.match(/```json\s*([\s\S]*?)```/);
       if (jsonMatch) {
         jsonString = jsonMatch[1].trim();
-        console.log('✅ Extracted JSON from markdown block');
+        console.log('✅ Extracted JSON from ```json block');
+      } else {
+        // Try extracting from ``` ... ``` blocks without "json" tag
+        jsonMatch = jsonString.match(/```\s*([\s\S]*?)```/);
+        if (jsonMatch) {
+          jsonString = jsonMatch[1].trim();
+          console.log('✅ Extracted JSON from ``` block');
+        } else {
+          // Remove any leading/trailing backticks (like `{...}`)
+          jsonString = jsonString.replace(/^`+|`+$/g, '').trim();
+          console.log('✅ Cleaned JSON string');
+        }
       }
+      
+      // Try to find JSON object if still not clean
+      if (!jsonString.startsWith('{')) {
+        const jsonObjMatch = jsonString.match(/\{[\s\S]*\}/);
+        if (jsonObjMatch) {
+          jsonString = jsonObjMatch[0];
+          console.log('✅ Extracted JSON object from text');
+        }
+      }
+      
+      console.log('📝 Final JSON string to parse:', jsonString.substring(0, 100) + '...');
       
       const scores = JSON.parse(jsonString);
       console.log('✅ Successfully parsed JSON');
+      
+      // Validate scores are in 0-100 range
+      const validateScore = (score) => Math.min(100, Math.max(0, score || 50));
+      scores.communication = validateScore(scores.communication);
+      scores.correctness = validateScore(scores.correctness);
+      scores.depth = validateScore(scores.depth);
 
       console.log('\n=================================================================');
-      console.log('  ⭐ AI GENERATED EVALUATION SCORES');
+      console.log('  ⭐ AI GENERATED EVALUATION SCORES (0-100 scale)');
       console.log('=================================================================\n');
       
-      const commScore = scores.communication || 0;
-      const corrScore = scores.correctness || 0;
-      const depthScore = scores.depth || 0;
-      const avgScore = ((commScore + corrScore + depthScore) / 3).toFixed(1);
+      const commScore = scores.communication;
+      const corrScore = scores.correctness;
+      const depthScore = scores.depth;
+      const avgScore = Math.round((commScore + corrScore + depthScore) / 3);
       
-      console.log('  📊 COMMUNICATION SKILLS: ' + commScore + '/10');
-      console.log('     ' + '█'.repeat(commScore) + '░'.repeat(10 - commScore));
+      console.log('  📊 COMMUNICATION SKILLS: ' + commScore + '/100');
+      console.log('     ' + '█'.repeat(Math.floor(commScore / 10)) + '░'.repeat(10 - Math.floor(commScore / 10)));
       console.log('     How clearly and effectively the answer is communicated\n');
       
-      console.log('  ✓  CORRECTNESS: ' + corrScore + '/10');
-      console.log('     ' + '█'.repeat(corrScore) + '░'.repeat(10 - corrScore));
+      console.log('  ✓  CORRECTNESS: ' + corrScore + '/100');
+      console.log('     ' + '█'.repeat(Math.floor(corrScore / 10)) + '░'.repeat(10 - Math.floor(corrScore / 10)));
       console.log('     Accuracy and validity of the technical content\n');
       
-      console.log('  🎯 DEPTH OF UNDERSTANDING: ' + depthScore + '/10');
-      console.log('     ' + '█'.repeat(depthScore) + '░'.repeat(10 - depthScore));
+      console.log('  🎯 DEPTH OF UNDERSTANDING: ' + depthScore + '/100');
+      console.log('     ' + '█'.repeat(Math.floor(depthScore / 10)) + '░'.repeat(10 - Math.floor(depthScore / 10)));
       console.log('     Demonstrates thorough grasp of concepts\n');
       
-      console.log('  🏆 AVERAGE SCORE: ' + avgScore + '/10');
+      console.log('  🏆 AVERAGE SCORE: ' + avgScore + '/100');
       console.log('     Overall performance rating\n');
       
       console.log('-----------------------------------------------------------------');
@@ -173,14 +221,90 @@ export class GeminiService {
       return scores;
     } catch (error) {
       console.error('❌ Error scoring answer:', error);
+      
+      // Check if it's a quota error
+      if (error.message.includes('credits exhausted') || error.message.includes('quota')) {
+        const quotaError = {
+          communication: 0,
+          correctness: 0,
+          depth: 0,
+          brief_feedback: '⚠️ AI credits exhausted. Create new Google AI Studio project and update API key in settings, or wait 24 hours.'
+        };
+        console.log('⚠️ Using quota error response:', quotaError);
+        return quotaError;
+      }
+      
       const fallbackScores = {
-        communication: 5,
-        correctness: 5,
-        depth: 5,
+        communication: 50,
+        correctness: 50,
+        depth: 50,
         brief_feedback: 'Unable to evaluate - using default scores'
       };
       console.log('⚠️ Using fallback scores:', fallbackScores);
       return fallbackScores;
+    }
+  }
+
+  /**
+   * Score interview answer AND generate follow-up response
+   * Returns both scores (hidden) and a conversational follow-up
+   */
+  async scoreAndRespond(params) {
+    const { question, answer, code, problem, questionsAsked } = params;
+
+    console.log('\n=================================================================');
+    console.log('  🤖 AI INTERVIEW: SCORE + FOLLOW-UP GENERATION');
+    console.log('=================================================================\n');
+
+    // First, generate the scores
+    const scores = await this.scoreInterviewAnswer({ question, answer, code });
+
+    console.log('✅ Scores generated');
+    console.log('📊 Communication:', scores.communication, '| Correctness:', scores.correctness, '| Depth:', scores.depth);
+
+    // Now generate a follow-up response based on the answer
+    const followUpPrompt = `You are a professional interviewer conducting a DSA interview. The candidate just answered your question.
+
+**Problem:** ${problem?.title || 'Unknown'}
+**Your Question:** "${question}"
+**Candidate's Answer:** "${answer}"
+**Their Code:** ${code?.substring(0, 500) || 'No code yet'}
+**Questions Asked So Far:** ${questionsAsked}/4
+
+Based on their answer, provide ONE of the following:
+1. A brief counter-question to probe deeper (if their answer was partial or you want to explore more)
+2. A short acknowledgment asking them to continue (if answer was good)
+
+Examples:
+- "Interesting. How would you handle the case when...?"
+- "Good point. What about the time complexity?"
+- "I see. Can you elaborate on why you chose that approach?"
+- "Noted. Feel free to continue with your solution."
+- "Understood. What edge cases are you considering?"
+
+Keep it VERY brief (1-2 sentences max). Be professional and natural.`;
+
+    try {
+      const response = await this.callGemini(followUpPrompt + '\n\nKeep response concise but complete (1-2 sentences).', {
+        temperature: 0.7,
+        maxTokens: 250
+      });
+
+      console.log('✅ Follow-up response generated:', response.text);
+      console.log('=================================================================\n');
+
+      return {
+        scores: scores,
+        followUpMessage: response.text
+      };
+    } catch (error) {
+      console.error('❌ Error generating follow-up:', error);
+      
+      // Return scores with a default follow-up
+      return {
+        scores: scores,
+        followUpMessage: "Noted. Feel free to continue with your solution."
+      };
     }
   }
 
@@ -208,9 +332,9 @@ export class GeminiService {
     console.log('🚀 Calling Gemini API...');
 
     try {
-      const response = await this.callGemini(prompt + '\n\nIMPORTANT: Be concise and direct. Maximum 2-3 sentences.', {
+      const response = await this.callGemini(prompt + '\n\nBe professional and complete your thought. 1-2 sentences.', {
         temperature: 0.8,
-        maxTokens: 200
+        maxTokens: 250
       });
 
       console.log('✅ Gemini API response received');
@@ -226,7 +350,13 @@ export class GeminiService {
         stack: error.stack
       });
       console.error('🔍 Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-      return "I see. Can you explain your thought process further?";
+      
+      // Check if it's a quota/rate limit error
+      if (error.message.includes('quota') || error.message.includes('limit') || error.message.includes('429') || error.message.includes('RESOURCE_EXHAUSTED')) {
+        return "⚠️ AI credits exhausted. Please either:\n1. Create a new Google AI Studio project and update API key in settings\n2. Wait 24 hours for quota to reset";
+      }
+      
+      return "Unable to process your message. Please check your API key in settings.";
     }
   }
 
@@ -296,17 +426,37 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
       hint_level: context?.hintLevel || 'medium'
     });
 
-    const response = await this.callGemini(prompt, {
-      temperature: 0.7,
-      maxTokens: 800,
-      systemInstruction: systemInstruction
-    });
+    try {
+      const response = await this.callGemini(prompt + '\n\nBe helpful but concise. 2-4 sentences maximum.', {
+        temperature: 0.7,
+        maxTokens: 350,
+        systemInstruction: systemInstruction
+      });
 
-    return {
-      question: response.text,
-      type: response.metadata?.hintType || (actionType === 'chat' ? 'conversation' : 'guiding_question'),
-      followUp: response.metadata?.followUp
-    };
+      return {
+        question: response.text,
+        type: response.metadata?.hintType || (actionType === 'chat' ? 'conversation' : 'guiding_question'),
+        followUp: response.metadata?.followUp
+      };
+    } catch (error) {
+      console.error('❌ Hint generation error:', error.message);
+      
+      // Check if it's a quota error
+      if (error.message.includes('credits exhausted') || error.message.includes('quota')) {
+        return {
+          question: "⚠️ AI credits exhausted. Please create new Google AI Studio project and update API key in settings, or wait 24 hours for quota reset.",
+          type: 'error',
+          followUp: null
+        };
+      }
+      
+      // Return helpful fallback that doesn't give solution
+      return {
+        question: "Let's break this down. What data structure would help you track the information you need?",
+        type: 'fallback',
+        followUp: null
+      };
+    }
   }
 
   /**
@@ -323,9 +473,9 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
       mode
     });
 
-    const response = await this.callGemini(prompt, {
+    const response = await this.callGemini(prompt + '\n\nBe concise. Maximum 4 sentences.', {
       temperature: 0.4,
-      maxTokens: 1000,
+      maxTokens: 350,
       systemInstruction: GEMINI_PROMPTS.systemRules.explainWhyNotHow
     });
 
@@ -355,7 +505,7 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
 
     const response = await this.callGemini(prompt, {
       temperature: 0.8,
-      maxTokens: 200
+      maxTokens: 300
     });
 
     return {
@@ -382,7 +532,7 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
 
     const response = await this.callGemini(prompt, {
       temperature: 0.3,
-      maxTokens: 400
+      maxTokens: 350
     });
 
     return {
@@ -413,7 +563,7 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
 
     const response = await this.callGemini(prompt, {
       temperature: 0.5,
-      maxTokens: 1000
+      maxTokens: 350
     });
 
     return {
@@ -441,9 +591,9 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
       style
     });
 
-    const response = await this.callGemini(prompt, {
+    const response = await this.callGemini(prompt + '\n\nBe concise and clear. Maximum 5 sentences.', {
       temperature: 0.7,
-      maxTokens: 600
+      maxTokens: 350
     });
 
     return {
@@ -468,10 +618,60 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
 
     const response = await this.callGemini(prompt, {
       temperature: 0.4,
-      maxTokens: 400
+      maxTokens: 300
     });
 
     return response.metadata?.problems || [];
+  }
+
+  /**
+   * Analyze user's proficiency in specific topics based on their performance
+   */
+  async analyzeTopicProficiency(params) {
+    const { problemTags, hintsUsed, interviewScores, userAnswer, problemDifficulty } = params;
+
+    const prompt = `Analyze a user's proficiency in these coding topics based on their problem-solving performance.
+
+Problem Topics: ${problemTags.join(', ')}
+Problem Difficulty: ${problemDifficulty}
+Hints Used: ${hintsUsed}
+${interviewScores ? `Interview Scores: Communication ${interviewScores.communication}/10, Correctness ${interviewScores.correctness}/10, Depth ${interviewScores.depth}/10` : ''}
+${userAnswer ? `User's Answer: ${userAnswer.substring(0, 200)}` : ''}
+
+Based on this performance, classify each topic as either "strong" or "needs_practice":
+- Strong: User solved with minimal help (0-1 hints), good interview scores (>7/10), correct understanding
+- Needs Practice: User needed significant help (3+ hints), low scores (<5/10), or struggled with concepts
+
+Return ONLY a JSON object with this exact format:
+{
+  "topicClassifications": [
+    {"topic": "topic_name", "proficiency": "strong" or "needs_practice", "confidence": 0.0-1.0}
+  ]
+}`;
+
+    try {
+      const response = await this.callGemini(prompt, {
+        temperature: 0.3,
+        maxTokens: 250
+      });
+
+      let jsonString = response.text.trim();
+      const jsonMatch = jsonString.match(/```json\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        jsonString = jsonMatch[1].trim();
+      }
+      
+      const result = JSON.parse(jsonString);
+      return result.topicClassifications || [];
+    } catch (error) {
+      console.error('❌ Error analyzing topic proficiency:', error);
+      // Fallback: simple rule-based classification
+      return problemTags.map(topic => ({
+        topic,
+        proficiency: hintsUsed <= 1 ? 'strong' : 'needs_practice',
+        confidence: hintsUsed <= 1 ? 0.8 : 0.7
+      }));
+    }
   }
 
   /**
@@ -490,7 +690,7 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
 
     const response = await this.callGemini(prompt, {
       temperature: 0.6,
-      maxTokens: 500
+      maxTokens: 350
     });
 
     return {
@@ -513,7 +713,7 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
 
     // Check rate limit
     if (!await this.rateLimiter.allowRequest()) {
-      throw new Error('Rate limit exceeded. Please wait before making more requests.');
+      throw new Error('Rate limit exceeded (15 requests/min). Please wait a minute before continuing.');
     }
 
     const url = `${this.baseUrl}/models/${this.model}:generateContent?key=${this.apiKey}`;
@@ -568,7 +768,15 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
       if (!response.ok) {
         const error = await response.json();
         const errorMsg = error.error?.message || response.statusText;
-        console.error('❌ Gemini API error:', errorMsg);
+        const errorStatus = error.error?.status || '';
+        
+        console.error('❌ Gemini API error:', errorMsg, 'Status:', errorStatus);
+        
+        // Check for quota/rate limit errors
+        if (errorStatus === 'RESOURCE_EXHAUSTED' || response.status === 429 || errorMsg.includes('quota') || errorMsg.includes('limit')) {
+          throw new Error('AI credits exhausted. Create new Google AI Studio project and update API key in settings, or wait 24 hours for quota reset.');
+        }
+        
         throw new Error(errorMsg);
       }
 

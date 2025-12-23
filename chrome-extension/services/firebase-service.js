@@ -174,6 +174,72 @@ export class FirebaseService {
   }
 
   /**
+   * Update topic proficiency tracking
+   */
+  async updateTopicProficiency(data) {
+    if (!this.userId) return { success: false, error: 'Not authenticated' };
+
+    try {
+      console.log('🎯 Updating topic proficiency:', data);
+      
+      // Get current topic proficiencies
+      const currentData = await this.readFromFirestore(`users/${this.userId}/analytics/topics`) || {};
+      const topicPerformance = currentData.topicPerformance || {};
+      
+      // Update each topic
+      for (const topicInfo of data.topics) {
+        const { topic, proficiency, confidence } = topicInfo;
+        
+        if (!topicPerformance[topic]) {
+          topicPerformance[topic] = {
+            total: 0,
+            strong: 0,
+            needsPractice: 0,
+            lastUpdated: Date.now(),
+            confidence: 0
+          };
+        }
+        
+        topicPerformance[topic].total += 1;
+        if (proficiency === 'strong') {
+          topicPerformance[topic].strong += 1;
+        } else {
+          topicPerformance[topic].needsPractice += 1;
+        }
+        topicPerformance[topic].lastUpdated = Date.now();
+        topicPerformance[topic].confidence = confidence || 0.5;
+      }
+      
+      // Calculate overall strengths and weaknesses
+      const topics = Object.entries(topicPerformance);
+      const strengths = topics
+        .filter(([_, data]) => data.strong >= data.needsPractice && data.total >= 2)
+        .map(([topic]) => topic)
+        .slice(0, 10);
+      
+      const weaknesses = topics
+        .filter(([_, data]) => data.needsPractice > data.strong && data.total >= 2)
+        .map(([topic]) => topic)
+        .slice(0, 10);
+      
+      // Save updated data
+      await this.writeToFirestore(`users/${this.userId}/analytics/topics`, {
+        userId: this.userId,
+        topicPerformance,
+        strengths,
+        weaknesses,
+        lastUpdated: Date.now()
+      });
+      
+      console.log('✅ Topic proficiency updated:', { strengths, weaknesses });
+      return { success: true, strengths, weaknesses };
+    } catch (error) {
+      console.error('❌ Failed to update topic proficiency:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Save interview report to Firestore
    */
   async saveInterviewReport(report) {

@@ -168,77 +168,72 @@ Metadata:
 \`\`\``,
 
   // Interview mode automated questions
-  interviewAutoQuestion: `You are a professional DSA interviewer conducting a coding interview.
+  interviewAutoQuestion: `You are a DSA interviewer. Generate ONE brief question.
 
-**Problem Details:**
-- Title: {{problem_title}}
-- Difficulty: {{problem_difficulty}}
-- Description: {{problem_description}}
-- Constraints: {{problem_constraints}}
-- Key Topics: {{problem_topics}}
+**Problem:** {{problem_title}} ({{problem_difficulty}})
+**Question {{question_number}}/4** | Time: {{time_elapsed}} min
+**Code:** {{current_code}}
 
-**Interview Context:**
-- Question Number: {{question_number}}/4
-- Current Code: {{current_code}}
-- Time Elapsed: {{time_elapsed}} minutes
-- Previous Questions: {{previous_questions}}
+Question types:
+1. Initial approach and understanding
+2. Implementation specifics  
+3. Edge cases and optimizations
+4. Alternative approaches
 
-Generate question {{question_number}} that is SPECIFIC to this problem:
-
-Question 1 (Start): Ask about their initial approach related to the problem's specific constraints and requirements. Reference the problem's unique characteristics.
-
-Question 2 (10 mins): Ask about their current implementation, probing specific aspects like the data structures they're using given the problem's constraints, time complexity considerations specific to input size.
-
-Question 3 (20 mins): Deep dive into edge cases that are SPECIFIC to this problem (e.g., based on constraints like array bounds, empty inputs, specific value ranges). Ask about optimizations related to the problem type.
-
-Question 4 (30 mins): Ask about alternative approaches specific to this problem type, trade-offs between different solutions, or how they would handle the problem's specific constraints differently.
-
-Provide ONLY the question (1-2 sentences, natural, conversational, and SPECIFIC to this problem):
+Generate ONLY a short, direct question (15 words max):
 `,
 
   // Score user's answer to interview question
-  scoreInterviewAnswer: `You are evaluating a candidate's answer in a DSA interview.
+  scoreInterviewAnswer: `You are a strict technical interviewer evaluating this answer. Score each dimension independently on 0-100 scale.
 
 **Question Asked:** {{question}}
-
 **Candidate's Answer:** {{answer}}
+**Code Provided:** {{code}}
 
-**Current Code Context:** {{code}}
+Evaluate each criterion separately with these strict rubrics:
 
-Evaluate the answer and provide scores (0-10 for each):
+**COMMUNICATION (0-100):**
+- 0-30: Incoherent, unclear, hard to follow
+- 31-50: Vague, missing key explanations, poorly structured
+- 51-70: Clear but could be more concise, minor communication gaps
+- 71-85: Well articulated, logical flow, easy to understand
+- 86-100: Exceptionally clear, concise, professional interview communication
 
-1. **Communication Score** (0-10): How clearly and professionally did they communicate? Were they articulate?
+**CORRECTNESS (0-100):**
+- 0-30: Fundamentally wrong approach or incorrect understanding
+- 31-50: Partially correct but has significant logical errors
+- 51-70: Mostly correct with minor mistakes or incomplete reasoning
+- 71-85: Correct solution with good logic, minor edge case issues
+- 86-100: Completely correct, handles all cases, no errors
 
-2. **Correctness Score** (0-10): Was their answer accurate and relevant to the question?
+**DEPTH (0-100):**
+- 0-30: Surface level, no analysis of complexity or trade-offs
+- 31-50: Basic understanding but lacks analysis of alternatives
+- 51-70: Good understanding, mentions complexity or trade-offs
+- 71-85: Deep analysis, discusses optimizations, considers edge cases
+- 86-100: Expert level - analyzes multiple approaches, complexity, space-time trade-offs
 
-3. **Depth Score** (0-10): Did they show deep understanding or just surface-level knowledge?
+DO NOT default to 50 or middle scores. Evaluate honestly based on actual answer quality.
+If answer is brief/shallow, score low (20-40). If thorough/correct, score high (70-90).
 
-Provide ONLY a JSON response:
+Return ONLY JSON:
 \`\`\`json
 {
-  "communication": 8,
-  "correctness": 7,
-  "depth": 6,
-  "brief_feedback": "One sentence of feedback (not shown to user)"
+  "communication": <score 0-100>,
+  "correctness": <score 0-100>,
+  "depth": <score 0-100>,
+  "brief_feedback": "<10 words constructive feedback>"
 }
 \`\`\``,
 
   // Interview mode conversational response (when not answering a question)
-  interviewConversation: `You are a professional interviewer conducting a DSA interview. The candidate is talking to you.
+  interviewConversation: `Interviewer response to candidate.
 
 **Problem:** {{problem_title}}
-**Interview Status:** {{questions_asked}}/4 questions asked
-**Candidate says:** "{{user_message}}"
-**Their code:** {{current_code}}
+**Status:** {{questions_asked}}/4 questions
+**Candidate:** "{{user_message}}"
 
-Respond naturally as an interviewer would:
-- If they're asking for help, give subtle hints
-- If they're explaining their approach, probe deeper with follow-up questions
-- If they're stuck, encourage them to think out loud
-- Be professional but supportive
-- Don't give away the solution
-
-Keep response brief (2-3 sentences max):
+Respond naturally as interviewer. Be professional and conversational (1-2 complete sentences).
 `,
 
   // Interview question generation by phase

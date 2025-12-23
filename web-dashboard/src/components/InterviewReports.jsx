@@ -78,17 +78,17 @@ export default function InterviewReports() {
         <StatCard
           icon={<Target className="text-purple-500" />}
           label="Avg Overall Score"
-          value={`${avgOverall}/10`}
+          value={`${avgOverall}/100`}
         />
         <StatCard
           icon={<MessageSquare className="text-green-500" />}
           label="Avg Communication"
-          value={`${avgCommunication}/10`}
+          value={`${avgCommunication}/100`}
         />
         <StatCard
           icon={<Code className="text-orange-500" />}
           label="Avg Technical"
-          value={`${avgTechnical}/10`}
+          value={`${avgTechnical}/100`}
         />
       </div>
 
@@ -113,16 +113,16 @@ function InterviewCard({ interview, expanded, onToggle }) {
   const technicalScore = interview.scores?.technical || 0
   
   const getScoreColor = (score) => {
-    if (score >= 8) return 'text-green-400'
-    if (score >= 6) return 'text-yellow-400'
-    if (score >= 4) return 'text-orange-400'
+    if (score >= 70) return 'text-green-400'
+    if (score >= 50) return 'text-yellow-400'
+    if (score >= 30) return 'text-orange-400'
     return 'text-red-400'
   }
 
   const getScoreBg = (score) => {
-    if (score >= 8) return 'bg-green-500/20 border-green-500/30'
-    if (score >= 6) return 'bg-yellow-500/20 border-yellow-500/30'
-    if (score >= 4) return 'bg-orange-500/20 border-orange-500/30'
+    if (score >= 70) return 'bg-green-500/20 border-green-500/30'
+    if (score >= 50) return 'bg-yellow-500/20 border-yellow-500/30'
+    if (score >= 30) return 'bg-orange-500/20 border-orange-500/30'
     return 'bg-red-500/20 border-red-500/30'
   }
 
@@ -176,7 +176,7 @@ function InterviewCard({ interview, expanded, onToggle }) {
             <div className={`px-4 py-2 rounded-lg border ${getScoreBg(overallScore)}`}>
               <div className="text-center">
                 <div className={`text-2xl font-bold ${getScoreColor(overallScore)}`}>
-                  {overallScore}/10
+                  {overallScore}/100
                 </div>
                 <div className="text-xs text-gray-400 mt-1">Overall</div>
               </div>
@@ -233,13 +233,13 @@ function InterviewCard({ interview, expanded, onToggle }) {
                       </div>
                       <div className="flex gap-2 ml-4">
                         <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs">
-                          Depth: {qs.scores?.depth || 0}/10
+                          Depth: {qs.scores?.depth || 0}/100
                         </span>
                         <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">
-                          Comm: {qs.scores?.communication || 0}/10
+                          Comm: {qs.scores?.communication || 0}/100
                         </span>
                         <span className="px-2 py-1 bg-orange-500/20 text-orange-400 rounded text-xs">
-                          Correct: {qs.scores?.correctness || 0}/10
+                          Correct: {qs.scores?.correctness || 0}/100
                         </span>
                       </div>
                     </div>
@@ -315,7 +315,7 @@ function ScoreDetail({ label, score, icon, color }) {
         {icon}
         <span className="text-xs font-medium">{label}</span>
       </div>
-      <div className="text-2xl font-bold">{score}/10</div>
+      <div className="text-2xl font-bold">{score}/100</div>
       <div className="mt-2 bg-gray-900/50 rounded-full h-2">
         <div 
           className={`h-full rounded-full bg-gradient-to-r ${
@@ -323,7 +323,7 @@ function ScoreDetail({ label, score, icon, color }) {
             color === 'green' ? 'from-green-500 to-green-400' :
             'from-orange-500 to-orange-400'
           }`}
-          style={{ width: `${(score / 10) * 100}%` }}
+          style={{ width: `${Math.min(100, score)}%` }}
         />
       </div>
     </div>
