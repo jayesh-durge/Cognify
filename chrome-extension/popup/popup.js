@@ -31,7 +31,7 @@ function attachListeners() {
   // Open dashboard
   document.getElementById('openDashboard').addEventListener('click', (e) => {
     e.preventDefault();
-    chrome.tabs.create({ url: 'http://localhost:3000' });
+    chrome.tabs.create({ url: 'https://cognify-68642.web.app/' });
   });
 
   // Open settings

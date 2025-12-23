@@ -31,7 +31,7 @@ export class AuthService {
       console.log('🔐 Starting sign-in flow...');
 
       // Open dashboard in new tab for authentication
-      const dashboardUrl = 'http://localhost:3000';
+      const dashboardUrl = 'https://cognify-68642.web.app/';
       
       return new Promise((resolve) => {
         chrome.tabs.create({ url: dashboardUrl }, (tab) => {

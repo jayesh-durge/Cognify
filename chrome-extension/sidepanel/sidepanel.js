@@ -35,7 +35,7 @@ async function checkAuthentication() {
     
     // Add click handler to open dashboard
     document.getElementById('loginBtn').addEventListener('click', () => {
-      chrome.tabs.create({ url: 'http://localhost:3000' });
+      chrome.tabs.create({ url: 'https://cognify-68642.web.app/' });
     });
     
     // Listen for authentication

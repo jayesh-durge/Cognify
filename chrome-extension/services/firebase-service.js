@@ -249,7 +249,7 @@ export class FirebaseService {
     
     if (!this.userId) {
       console.error('❌ CRITICAL: User not authenticated, cannot save interview');
-      console.error('💡 Make sure user is signed in on dashboard (localhost:3000)');
+      console.error('💡 Make sure user is signed in on dashboard (https://cognify-68642.web.app/).');
       console.error('💡 Check chrome.storage.local for user_id');
       return { success: false, error: 'User not authenticated' };
     }

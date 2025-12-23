@@ -63,11 +63,6 @@ export const config = {
       name: 'GeeksforGeeks',
       enabled: true,
       editorType: 'monaco'
-    },
-    youtube: {
-      name: 'YouTube',
-      enabled: true,
-      editorType: null
     }
   },
   

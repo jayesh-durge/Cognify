@@ -1,6 +1,57 @@
-# Cognify Web Dashboard
+# Cognify Web Dashboard 📊
 
-A modern React-based web dashboard for tracking your coding interview preparation progress, viewing analytics, and managing your learning journey with AI-powered insights.
+**Already Online & Ready to Use!** ✅
+
+View your coding progress, analytics, and interview preparation insights - no installation needed!
+
+🌐 **Access Dashboard:** [https://cognify-68642.web.app/](https://cognify-68642.web.app/)
+
+---
+
+## 🚀 For Users - Just Visit the Dashboard!
+
+### No Setup Required! 🎉
+
+The dashboard is **already hosted and running online**. You don't need to install anything!
+
+**Just follow these 3 simple steps:**
+
+1. 👉 **[Open the Dashboard](https://cognify-68642.web.app/)**
+2. Click **"Sign in with Google"**
+3. Use the **same Google account** you use in the Chrome Extension
+
+That's it! ✨
+
+### What You Can Do:
+
+✅ View your progress across all platforms  
+✅ See detailed analytics and charts  
+✅ Review interview session reports  
+✅ Get personalized recommendations  
+✅ Track your daily/weekly/monthly progress  
+✅ Access from any device (phone, tablet, laptop)  
+
+### Requirements:
+
+- 🌐 Internet connection
+- 🔑 Google account (same as Chrome Extension)
+- 🧩 Cognify Chrome Extension installed (to track data)
+
+📘 **Need to install the extension?** [Download here](https://github.com/jayesh-durge/Cognify/archive/refs/heads/main.zip)
+
+---
+
+## 🛠️ For Developers Only
+
+> ⚠️ **The sections below are ONLY for developers who want to:**
+> - Run the dashboard locally for development
+> - Contribute to the project
+> - Customize the dashboard
+> - Deploy their own instance
+>
+> **Regular users:** Just use [https://cognify-68642.web.app/](https://cognify-68642.web.app/) ⬆️
+
+---
 
 ## 🚀 Features
 
@@ -10,14 +61,21 @@ A modern React-based web dashboard for tracking your coding interview preparatio
 - **Firebase Integration**: Secure authentication and real-time data sync
 - **Responsive Design**: Works seamlessly on desktop and mobile devices
 
-## 📋 Prerequisites
+### Prerequisites (For Local Development)
 
-- Node.js (v16 or higher)
-- npm or yarn
-- Firebase project (for authentication and database)
-- Google account (for authentication)
+- **Node.js** v16 or higher ([Download](https://nodejs.org/))
+- **npm** or yarn (comes with Node.js)
+- **Google account** (for authentication)
+- **Firebase project** (optional - can use existing config)
 
 ## 🛠️ Setup Instructions
+
+> 💡 **Tip:** Most users don't need to run this locally. Just use the [live dashboard](https://cognify-68642.web.app/)!
+>
+> Only follow these steps if you want to:
+> - Contribute to development
+> - Customize the dashboard
+> - Run your own instance
 
 ### 1. Install Dependencies
 
@@ -26,9 +84,11 @@ cd web-dashboard
 npm install
 ```
 
-### 2. Configure Firebase
+### 2. Configure Firebase (Optional)
 
-Create a `.env` file in the `web-dashboard` directory with your Firebase credentials:
+> 💡 **Note:** The extension comes with Firebase already configured. You only need this if you're setting up your own instance.
+
+Create a `.env` file in the `web-dashboard` directory:
 
 ```env
 VITE_FIREBASE_API_KEY=your_api_key_here
@@ -40,11 +100,11 @@ VITE_FIREBASE_APP_ID=your_app_id
 VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
 ```
 
-**To get your Firebase credentials:**
+**Get your Firebase credentials:**
 1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Select your project or create a new one
-3. Go to Project Settings > General
-4. Scroll down to "Your apps" and click on the web app icon
+2. Select your project (or create new)
+3. Go to Project Settings → General
+4. Scroll to "Your apps" and select/create a web app
 5. Copy the configuration values
 
 ### 3. Enable Firebase Services
@@ -64,7 +124,9 @@ In your Firebase Console:
    - Go to Hosting
    - Follow the setup wizard
 
-## 🏃 Running the Application
+## 🏃 Running the Application (Developers Only)
+
+> **Regular Users:** You don't need this! Just use [https://cognify-68642.web.app/](https://cognify-68642.web.app/)
 
 ### Development Mode
 
@@ -72,7 +134,9 @@ In your Firebase Console:
 npm run dev
 ```
 
-The app will be available at `http://localhost:5173`
+The app will be available at `http://localhost:5173` for local development.
+
+**Production URL:** https://cognify-68642.web.app/
 
 ### Build for Production
 
@@ -118,11 +182,22 @@ npm run build
 firebase deploy --only hosting
 ```
 
-Your dashboard will be live at: `https://your-project.web.app`
+Your dashboard is live at: **https://cognify-68642.web.app/**
 
 ## 📱 How to Use
 
-### First Time Setup
+### For Regular Users
+
+**Just visit: [https://cognify-68642.web.app/](https://cognify-68642.web.app/)**
+
+Then:
+1. Sign in with Google (same account as your Chrome extension)
+2. View your dashboard, progress, and interview reports
+3. All your data syncs automatically from the Chrome extension
+
+---
+
+### For Developers (Local Setup)
 
 1. **Sign In:**
    - Open the dashboard

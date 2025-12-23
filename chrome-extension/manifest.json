@@ -56,12 +56,6 @@
       "run_at": "document_idle"
     },
     {
-      "matches": ["*://*.youtube.com/*"],
-      "js": ["content-scripts/youtube.js"],
-      "css": ["content-scripts/styles/common.css"],
-      "run_at": "document_idle"
-    },
-    {
       "matches": ["http://localhost:*/*", "http://127.0.0.1:*/*"],
       "js": ["popup/auth-sync.js"],
       "run_at": "document_start",
@@ -84,7 +78,6 @@
     "*://*.codechef.com/*",
     "*://*.codeforces.com/*",
     "*://*.geeksforgeeks.org/*",
-    "*://*.youtube.com/*",
     "https://generativelanguage.googleapis.com/*",
     "https://firestore.googleapis.com/*",
     "http://localhost/*",
@@ -94,7 +87,8 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "sidepanel/sidepanel.html"
+        "sidepanel/sidepanel.html",
+        "welcome/welcome.html"
       ],
       "matches": ["<all_urls>"]
     }

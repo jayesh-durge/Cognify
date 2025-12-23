@@ -96,6 +96,13 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   
   // Set up midnight reset alarm
   setupMidnightReset();
+
+  // Open welcome page on first install
+  if (details.reason === 'install') {
+    chrome.tabs.create({
+      url: chrome.runtime.getURL('welcome/welcome.html')
+    });
+  }
 });
 
 // Listen for storage changes to reload API key and user auth
@@ -136,7 +143,7 @@ async function requireAuth() {
       success: false,
       requiresAuth: true,
       error: 'Authentication required. Please sign in to use this feature.',
-      dashboardUrl: 'http://localhost:3000'
+      dashboardUrl: 'https://cognify-68642.web.app/'
     };
   }
   return { success: true, user };
@@ -469,128 +476,84 @@ async function handleHintRequest(data, sender) {
   
   // INTERVIEW MODE HANDLING
   if (mode === 'interview' && session.interviewState.active) {
-    // Check if this is a response to an interview question
-    if (session.interviewState.awaitingAnswer) {
-      console.log('\n┌──────────────────────────────────────────────────────────────────┐');
-      console.log('│  🎤 INTERVIEW MODE: Scoring Answer to Question #' + session.interviewState.questionsAsked + '     │');
-      console.log('└──────────────────────────────────────────────────────────────────┘');
-      console.log('📌 Interview State Check:');
-      console.log('  • awaitingAnswer:', session.interviewState.awaitingAnswer);
-      console.log('  • currentQuestion:', session.interviewState.currentQuestion);
-      console.log('  • userAnswer:', userQuestion);
-      console.log('  • userCode:', userCode ? userCode.substring(0, 100) + '...' : 'No code');
-      
-      console.log('\n🚀 Calling AI to score answer and generate follow-up...');
-      
-      // User is answering the interview question - score it AND get follow-up
-      const result = await geminiService.scoreAndRespond({
-        question: session.interviewState.currentQuestion,
-        answer: userQuestion,
-        code: userCode,
-        problem: session.currentProblem,
-        questionsAsked: session.interviewState.questionsAsked
-      });
-      
-      console.log('\n✅ AI RESPONSE RECEIVED!');
-      console.log('📦 Score object:', JSON.stringify(result.scores, null, 2));
-      console.log('💬 Follow-up message:', result.followUpMessage);
-      
-      console.log('\n✅ ANSWER SUCCESSFULLY SCORED!');
-      console.log('📋 Score Entry Details:');
-      
-      // Store the score (not displayed in chat)
-      const scoreEntry = {
-        questionNumber: session.interviewState.questionsAsked,
-        question: session.interviewState.currentQuestion,
-        answer: userQuestion,
-        scores: result.scores,
-        timestamp: Date.now()
-      };
-      
-      console.log('  • Question Number:', scoreEntry.questionNumber);
-      console.log('  • Question:', scoreEntry.question);
-      console.log('  • User Answer:', scoreEntry.answer.substring(0, 100) + (scoreEntry.answer.length > 100 ? '...' : ''));
-      console.log('  • Scores:', JSON.stringify(scoreEntry.scores, null, 2));
-      console.log('  • Timestamp:', new Date(scoreEntry.timestamp).toLocaleString());
-      
-      session.interviewState.scores.push(scoreEntry);
+    console.log('\n┌──────────────────────────────────────────────────────────────────┐');
+    console.log('│  🎤 INTERVIEW MODE: Processing User Interaction                 │');
+    console.log('└──────────────────────────────────────────────────────────────────┘');
+    console.log('📌 Interview State:');
+    console.log('  • awaitingAnswer:', session.interviewState.awaitingAnswer);
+    console.log('  • questionsAsked:', session.interviewState.questionsAsked);
+    console.log('  • currentQuestion:', session.interviewState.currentQuestion?.substring(0, 60));
+    console.log('  • userMessage:', userQuestion?.substring(0, 100));
+    
+    // Use unified interview response for ALL interactions (scores + responds)
+    console.log('\n🚀 Calling unified AI interview handler...');
+    
+    const result = await geminiService.unifiedInterviewResponse({
+      problem: session.currentProblem,
+      questionsAsked: session.interviewState.questionsAsked,
+      userMessage: userQuestion,
+      currentCode: userCode,
+      currentQuestion: session.interviewState.currentQuestion,
+      isAnsweringQuestion: session.interviewState.awaitingAnswer
+    });
+    
+    console.log('\n✅ UNIFIED RESPONSE RECEIVED!');
+    console.log('📊 Scores:', JSON.stringify(result.scores, null, 2));
+    console.log('💬 AI Response:', result.response);
+    console.log('🏷️ Interaction Type:', result.interactionType);
+    console.log('📝 Should Score:', result.shouldScore);
+    
+    // Always store the interaction with scores
+    const interactionEntry = {
+      questionNumber: session.interviewState.questionsAsked,
+      question: session.interviewState.currentQuestion || 'General conversation',
+      answer: userQuestion,
+      scores: result.scores,
+      timestamp: Date.now(),
+      interactionType: result.interactionType
+    };
+    
+    // If this was answering a direct question, mark it formally
+    if (session.interviewState.awaitingAnswer && result.shouldScore) {
+      console.log('✅ This was an ANSWER to interview question #' + session.interviewState.questionsAsked);
+      session.interviewState.scores.push(interactionEntry);
       session.interviewState.awaitingAnswer = false;
-      
-      console.log('\n💾 SCORES STORAGE UPDATE:');
-      console.log('  ✓ Total answers scored so far:', session.interviewState.scores.length);
-      console.log('  ✓ Total questions asked:', session.interviewState.questionsAsked);
       
       console.log('\n📊 ALL INTERVIEW SCORES SO FAR:');
       console.log('┌────────────────────────────────────────────────────────────────┐');
       session.interviewState.scores.forEach((s, idx) => {
         console.log(`│ Question ${idx + 1}:`, s.question.substring(0, 40) + '...');
-        console.log('│   Communication:', s.scores.communication + '/10 |', 
-                    'Correctness:', s.scores.correctness + '/10 |',
-                    'Depth:', s.scores.depth + '/10');
+        console.log('│   Communication:', s.scores.communication + '/100 |', 
+                    'Technical:', s.scores.technical + '/100 |',
+                    'Overall:', s.scores.overall + '/100');
         console.log('│   Feedback:', s.scores.brief_feedback.substring(0, 50) + '...');
         if (idx < session.interviewState.scores.length - 1) {
           console.log('├────────────────────────────────────────────────────────────────┤');
         }
       });
       console.log('└────────────────────────────────────────────────────────────────┘\n');
-      
-      await sessionManager.saveSession(sender.tab.id, session);
-      
-      // Return follow-up message (scores stored but not shown in chat)
-      return {
-        success: true,
-        hint: {
-          question: result.followUpMessage,
-          metadata: { scoredAnswer: true, hideScore: true }
-        },
-        mode: 'interview'
-      };
     } else {
-      // User is chatting (not answering a question)
-      console.log('\n💬 INTERVIEW CONVERSATION MODE');
-      console.log('📌 Interview State:');
-      console.log('  • awaitingAnswer:', session.interviewState.awaitingAnswer);
-      console.log('  • questionsAsked:', session.interviewState.questionsAsked);
-      console.log('  • userMessage:', userQuestion);
-      
-      // Check if user message is just a casual acknowledgment after scoring
-      const casualAcks = /^(ok|okay|sure|yes|no|nope|yeah|yep|got it|thanks|thank you|alright|fine|noted|understood)$/i;
-      if (casualAcks.test(userQuestion.trim())) {
-        console.log('⚠️ Detected casual acknowledgment - not generating response');
-        return {
-          success: true,
-          hint: {
-            question: 'Please continue with your solution. I\'ll ask the next question soon.',
-            metadata: { casualAck: true }
-          },
-          mode: 'interview'
-        };
-      }
-      
-      console.log('\n🚀 Calling AI for conversational response...');
-      
-      const response = await geminiService.handleInterviewConversation({
-        problem: session.currentProblem,
-        questionsAsked: session.interviewState.questionsAsked,
-        userMessage: userQuestion,
-        currentCode: userCode
-      });
-      
-      console.log('\n✅ AI RESPONSE RECEIVED!');
-      console.log('💬 AI Says:', response);
-      console.log('📏 Response length:', response?.length || 0, 'characters');
-      
-      await sessionManager.saveSession(sender.tab.id, session);
-      
-      return {
-        success: true,
-        hint: {
-          question: response,
-          metadata: { interviewConversation: true }
-        },
-        mode: 'interview'
-      };
+      console.log('ℹ️ This was general CONVERSATION (not scoring as formal answer)');
+      // Still track but don't add to formal scores
+      session.interviewState.conversationScores = session.interviewState.conversationScores || [];
+      session.interviewState.conversationScores.push(interactionEntry);
     }
+    
+    await sessionManager.saveSession(sender.tab.id, session);
+    
+    // Return AI response (scores hidden from user)
+    return {
+      success: true,
+      hint: {
+        question: result.response,
+        metadata: { 
+          scored: true, 
+          hideScore: true,
+          interactionType: result.interactionType
+        }
+      },
+      mode: 'interview'
+    };
   }
   
   // PRACTICE MODE (existing logic)
@@ -1051,34 +1014,30 @@ function calculateInterviewScores(interviewState) {
     };
   }
   
-  // Average all scores (already 0-100)
+  // Average all scores across all answers (already 0-100 from AI)
   const avgCommunication = Math.round(scores.reduce((sum, s) => sum + (s.scores.communication || 0), 0) / scores.length);
-  const avgCorrectness = Math.round(scores.reduce((sum, s) => sum + (s.scores.correctness || 0), 0) / scores.length);
-  const avgDepth = Math.round(scores.reduce((sum, s) => sum + (s.scores.depth || 0), 0) / scores.length);
+  const avgTechnical = Math.round(scores.reduce((sum, s) => sum + (s.scores.technical || 0), 0) / scores.length);
+  const avgOverall = Math.round(scores.reduce((sum, s) => sum + (s.scores.overall || 0), 0) / scores.length);
   
-  // Technical score = average of correctness and depth
-  const technical = Math.round((avgCorrectness + avgDepth) / 2);
-  
-  // Overall score = weighted average
-  const overall = Math.round((avgCommunication * 0.3 + avgCorrectness * 0.4 + avgDepth * 0.3));
-  
-  // Determine strengths and improvements (using 0-100 scale)
+  // Determine strengths and improvements based on averaged scores
   const strengths = [];
   const improvements = [];
   
-  if (avgCommunication >= 70) strengths.push('Clear communication');
-  else if (avgCommunication < 50) improvements.push('Improve explanation clarity');
+  if (avgCommunication >= 70) strengths.push('Excellent communication skills');
+  else if (avgCommunication >= 55) strengths.push('Good communication');
+  else if (avgCommunication < 50) improvements.push('Work on explaining thoughts more clearly');
   
-  if (avgCorrectness >= 70) strengths.push('Accurate answers');
-  else if (avgCorrectness < 50) improvements.push('Focus on answer accuracy');
+  if (avgTechnical >= 70) strengths.push('Strong technical knowledge');
+  else if (avgTechnical >= 55) strengths.push('Decent technical understanding');
+  else if (avgTechnical < 50) improvements.push('Strengthen technical fundamentals');
   
-  if (avgDepth >= 70) strengths.push('Deep technical understanding');
-  else if (avgDepth < 50) improvements.push('Develop deeper technical knowledge');
+  if (avgOverall >= 70) strengths.push('Interview-ready performance');
+  else if (avgOverall < 50) improvements.push('Needs more interview practice');
   
   return {
     communication: avgCommunication,
-    technical: technical,
-    overall: overall,
+    technical: avgTechnical,
+    overall: avgOverall,
     strengths: strengths,
     improvements: improvements,
     totalQuestions: scores.length

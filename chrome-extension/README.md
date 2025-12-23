@@ -1,6 +1,73 @@
-# Cognify Chrome Extension
+# Cognify Chrome Extension 🧩
 
-An AI-powered Chrome extension that acts as your personal interview mentor while you practice coding problems. Get real-time hints, learn problem-solving approaches, and track your progress across multiple coding platforms.
+**Local Installation Required** - This extension runs on YOUR computer to provide AI assistance while you code.
+
+Get real-time AI hints, learn problem-solving approaches, and track your progress across multiple coding platforms - all from your browser!
+
+🌐 **Web Dashboard (Online):** [https://cognify-68642.web.app/](https://cognify-68642.web.app/)
+
+---
+
+## 🎯 Quick Installation Guide (5 Minutes)
+
+### Step 1: Download the Extension
+
+📥 **[Download Cognify Extension](https://github.com/jayesh-durge/Cognify/archive/refs/heads/main.zip)**
+
+- Click the link above to download
+- Extract the ZIP file to a **permanent location** on your computer
+- ⚠️ **Important:** Don't delete this folder after installation!
+
+### Step 2: Install in Chrome
+
+1. Open Google Chrome browser
+2. Type `chrome://extensions/` in the address bar and press Enter
+3. Turn ON **"Developer mode"** (toggle switch in top-right corner)
+4. Click **"Load unpacked"** button
+5. Navigate to the extracted folder and select: `Cognify-main/chrome-extension`
+6. Click **"Select Folder"**
+7. ✅ Extension installed! You'll see the Cognify icon in your toolbar
+
+**Tip:** Click the puzzle icon (🧩) in Chrome and pin Cognify for easy access!
+
+### Step 3: Get Your Free API Key
+
+1. Visit 🔗 **[Google AI Studio](https://makersuite.google.com/app/apikey)**
+2. Sign in with your Google account
+3. Click **"Create API Key"** (100% FREE)
+4. Copy the API key to clipboard
+
+### Step 4: Configure the Extension
+
+1. Click the **Cognify icon** in your Chrome toolbar
+2. Click the **⚙️ Settings** icon
+3. Paste your Gemini API key in the field
+4. Click **"Save"**
+5. ✅ Configuration complete!
+
+### Step 5: Sign In & Start Using
+
+1. Click the Cognify icon
+2. Click **"Sign in with Google"**
+3. Authorize the extension
+4. Go to any coding platform (LeetCode, CodeChef, etc.)
+5. Open a problem and click Cognify icon
+6. Start getting AI hints!
+
+📊 **View Your Progress:** [Open Dashboard →](https://cognify-68642.web.app/)
+
+---
+
+> ### ✅ Important: Where Each Component Lives
+> 
+> | Component | Location | Access |
+> |-----------|----------|--------|
+> | 🧩 **This Extension** | Your Computer (Local) | Install from Chrome://extensions |
+> | 📊 **Web Dashboard** | Cloud (Online) | https://cognify-68642.web.app/ |
+>
+> **You install the extension locally, but use the dashboard online!**
+
+---
 
 ## 🚀 Features
 
@@ -12,14 +79,16 @@ An AI-powered Chrome extension that acts as your personal interview mentor while
 - **Session Management**: Track time spent on each problem
 - **Firebase Sync**: All your data synced across devices
 
-## 📋 Prerequisites
+## 📋 What You Need
 
-- Google Chrome browser (Version 88 or higher)
-- Google account (for authentication)
-- Gemini API key (for AI features)
-- Firebase project (for data sync)
+- **Google Chrome** browser (any recent version)
+- **Google account** (for sign-in)
+- **Gemini API key** (free - get it [here](https://makersuite.google.com/app/apikey))
+- **5 minutes** to set up!
 
-## 🛠️ Setup Instructions
+---
+
+## 🛠️ Detailed Setup (For Developers)
 
 ### 1. Get Required API Keys
 
@@ -35,7 +104,9 @@ An AI-powered Chrome extension that acts as your personal interview mentor while
 3. Add a web app to your project
 4. Copy the Firebase configuration
 
-### 2. Configure the Extension
+### 2. Configure the Extension (For Custom Firebase Setup)
+
+> ⚠️ **Note:** If you're just using the extension, you can skip this and use the default Firebase configuration. This is only needed if you want to set up your own Firebase project.
 
 1. **Update Firebase Config** in `services/firebase-service.js`:
 ```javascript
@@ -49,29 +120,19 @@ const firebaseConfig = {
 };
 ```
 
-2. **Update Gemini API Config** in `config/config.js`:
-```javascript
-export const CONFIG = {
-  GEMINI_API_KEY: 'your-gemini-api-key-here',
-  // ... other config
-};
-```
+2. **Add Your Gemini API Key** in extension settings:
+   - Install the extension first
+   - Click Cognify icon → Settings
+   - Paste your API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Click Save
 
-### 3. Install the Extension
+### 3. Install the Extension in Chrome
 
-#### Method 1: Load Unpacked (Development)
-
-1. Open Chrome and navigate to `chrome://extensions/`
+1. Open Chrome and go to `chrome://extensions/`
 2. Enable "Developer mode" (toggle in top-right corner)
 3. Click "Load unpacked"
-4. Select the `chrome-extension` folder
-5. The extension should now appear in your extensions list
-
-#### Method 2: Create ZIP (Distribution)
-
-1. Zip the `chrome-extension` folder
-2. Upload to Chrome Web Store (if publishing)
-3. Or share the ZIP file for manual installation
+4. Select the `chrome-extension` folder from your download
+5. Extension appears in your toolbar - pin it for easy access!
 
 ### 4. Enable Firebase Services
 

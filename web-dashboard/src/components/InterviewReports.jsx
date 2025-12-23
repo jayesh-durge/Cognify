@@ -232,14 +232,14 @@ function InterviewCard({ interview, expanded, onToggle }) {
                         <p className="text-xs text-gray-400 italic">"{qs.question}"</p>
                       </div>
                       <div className="flex gap-2 ml-4">
-                        <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs">
-                          Depth: {qs.scores?.depth || 0}/100
-                        </span>
-                        <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">
+                        <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs">
                           Comm: {qs.scores?.communication || 0}/100
                         </span>
-                        <span className="px-2 py-1 bg-orange-500/20 text-orange-400 rounded text-xs">
-                          Correct: {qs.scores?.correctness || 0}/100
+                        <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs">
+                          Tech: {qs.scores?.technical || 0}/100
+                        </span>
+                        <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">
+                          Overall: {qs.scores?.overall || 0}/100
                         </span>
                       </div>
                     </div>

@@ -11,7 +11,88 @@
 
 *Learn to think, not just memorize solutions* 🚀
 
+[🚀 Quick Start](#-quick-start-for-users) | [📊 View Dashboard](https://cognify-68642.web.app/) | [📥 Download Extension](#-quick-start-for-users) | [🛠️ For Developers](#-setup-for-developers)
+
 </div>
+
+---
+
+> ### ⚡ Two Components, Two Setup Methods:
+> 
+> | Component | Setup Method | Link |
+> |-----------|--------------|------|
+> | 🧩 **Chrome Extension** | ⬇️ Download & Install Locally | [Download](#step-1-download--install-chrome-extension-local-setup) |
+> | 📊 **Web Dashboard** | 🌐 Use Online (Already Hosted) | [Open Dashboard](https://cognify-68642.web.app/) |
+
+---
+
+## 🎯 Quick Start (For Users)
+
+### Step 1: Download & Install Chrome Extension (Local Setup)
+
+**The Chrome Extension runs on YOUR computer:**
+
+1. **Download the Extension**
+   - [📥 Download Cognify Extension ZIP](https://github.com/jayesh-durge/Cognify/archive/refs/heads/main.zip)
+   - Extract the ZIP file to a permanent folder on your computer
+   - ⚠️ **Important:** Keep this folder - don't delete it after installation!
+
+2. **Install in Chrome**
+   - Open Chrome browser
+   - Go to `chrome://extensions/`
+   - Turn on **"Developer mode"** (toggle in top-right)
+   - Click **"Load unpacked"**
+   - Navigate to and select the `Cognify-main/chrome-extension` folder
+   - Extension will appear in your toolbar!
+
+3. **Get Free Gemini API Key**
+   - Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Sign in with your Google account
+   - Click **"Create API Key"** (completely FREE!)
+   - Copy the API key
+
+4. **Configure Your Extension**
+   - Click the Cognify extension icon in Chrome
+   - Click the ⚙️ Settings icon
+   - Paste your Gemini API key
+   - Click **Save**
+
+5. **Sign In**
+   - Click the Cognify extension icon
+   - Click **"Sign in with Google"**
+   - Authorize the extension
+
+📖 **[Detailed Chrome Extension Guide →](chrome-extension/README.md)**
+
+---
+
+### Step 2: Access Your Dashboard (Online - No Setup Required!)
+
+**The Dashboard is already hosted online - just visit it:**
+
+🌐 **[Open Your Dashboard →](https://cognify-68642.web.app/)**
+
+- ✅ No installation needed
+- ✅ No local setup required
+- ✅ Works on any device with internet
+- ✅ Just sign in with the same Google account you used in the extension
+
+📖 **[Dashboard Documentation →](web-dashboard/README.md)**
+
+---
+
+### Step 3: Start Learning!
+
+1. Go to any supported platform:
+   - 💻 [LeetCode](https://leetcode.com)
+   - 🏆 [CodeChef](https://codechef.com)
+   - 🎯 [Codeforces](https://codeforces.com)
+   - 📚 [GeeksforGeeks](https://geeksforgeeks.org)
+
+2. Open any coding problem
+3. Click the Cognify extension icon
+4. Get AI-powered hints and guidance!
+5. Track your progress on the [Dashboard](https://cognify-68642.web.app/)
 
 ---
 
@@ -171,41 +252,45 @@ Works seamlessly on:
 
 ## 📦 Components
 
-### [🧩 Chrome Extension](chrome-extension/README.md)
-Your AI mentor that lives in your browser. Get help exactly where you code.
+### 🧩 Chrome Extension (Local Installation)
+Your AI mentor that lives in your browser and runs on your computer.
 
-**Key Features:**
+**What it does:**
+- Provides AI hints while you solve problems
+- Tracks your progress automatically
+- Works on LeetCode, CodeChef, Codeforces, GeeksforGeeks, YouTube
 - Side panel AI assistant
-- Real-time hints and guidance
-- Automatic problem detection
-- Session tracking
-- Multi-platform integration
+- Session timing and management
 
-📖 **[Read Full Documentation →](chrome-extension/README.md)**
+**Setup:** Download and install locally on your machine
+
+💾 **[Download Extension](https://github.com/jayesh-durge/Cognify/archive/refs/heads/main.zip)** | 📖 **[Installation Guide →](chrome-extension/README.md)**
 
 ---
 
-### [📊 Web Dashboard](web-dashboard/README.md)
-Comprehensive analytics and insights dashboard for tracking your entire learning journey.
+### 📊 Web Dashboard (Online - Already Hosted!)
+Cloud-based analytics dashboard accessible from anywhere.
 
-**Key Features:**
-- Progress visualization
-- Interview report analysis
+**What it does:**
+- Visualizes your learning progress
+- Shows performance analytics
+- Provides interview reports
 - Personalized recommendations
-- Performance metrics
-- Multi-device sync
+- Works on any device
 
-📖 **[Read Full Documentation →](web-dashboard/README.md)**
+**Setup:** None! Just visit the link and sign in
+
+🌐 **[Open Dashboard →](https://cognify-68642.web.app/)** | 📖 **[Learn More →](web-dashboard/README.md)**
 
 ---
 
-## 🚀 Quick Start
+## �️ Setup (For Developers)
 
 ### Prerequisites
 - Node.js (v16+)
 - Google Chrome browser
 - Firebase account
-- Gemini API key
+- Gemini API key (free)
 
 ### Installation
 
@@ -218,23 +303,27 @@ cd Cognify
 2. **Set up Chrome Extension:**
 ```bash
 cd chrome-extension
-# Follow instructions in chrome-extension/README.md
+# Follow detailed instructions in chrome-extension/README.md
 ```
+📖 **[Chrome Extension Setup Guide →](chrome-extension/README.md)**
 
 3. **Set up Web Dashboard:**
 ```bash
 cd web-dashboard
 npm install
-# Follow instructions in web-dashboard/README.md
+npm run dev
+# Dashboard will run at http://localhost:5173
 ```
+📖 **[Web Dashboard Setup Guide →](web-dashboard/README.md)**
 
 4. **Configure Firebase:**
-   - Create a Firebase project
+   - Create a [Firebase project](https://console.firebase.google.com/)
    - Enable Authentication (Google provider)
    - Set up Firestore Database
    - Add Firebase config to both components
+   - See detailed guides in component READMEs
 
-5. **Get Gemini API Key:**
+5. **Get Gemini API Key (Free):**
    - Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
    - Create and copy your API key
    - Add to extension config
@@ -332,6 +421,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 Built with ❤️ by passionate developers who understand the struggle of interview preparation.
 
+**Project Maintainer:** [Jayesh Durge](https://github.com/jayesh-durge)
+
 ---
 
 ## 🙏 Acknowledgments
@@ -347,7 +438,7 @@ Built with ❤️ by passionate developers who understand the struggle of interv
 
 - **GitHub Issues:** [Report bugs or request features](https://github.com/jayesh-durge/Cognify/issues)
 - **Email:** jayeshkishordurge@gmail.com
-- **Website:** Coming soon!
+- **Dashboard:** [https://cognify-68642.web.app/](https://cognify-68642.web.app/)
 
 ---
 
@@ -357,6 +448,8 @@ Built with ❤️ by passionate developers who understand the struggle of interv
 
 **Star ⭐ this repo if you find it helpful!**
 
-[Get Started](chrome-extension/README.md) | [View Dashboard Docs](web-dashboard/README.md) | [Report Bug](https://github.com/jayesh-durge/Cognify/issues)
+### Quick Links
+
+🚀 [Download Extension](https://github.com/jayesh-durge/Cognify/archive/refs/heads/main.zip) | 📊 [Open Dashboard](https://cognify-68642.web.app/) | 📖 [Extension Guide](chrome-extension/README.md) | 📈 [Dashboard Docs](web-dashboard/README.md) | 🐛 [Report Bug](https://github.com/jayesh-durge/Cognify/issues)
 
 </div>

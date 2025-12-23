@@ -93,7 +93,7 @@ export class GeminiService {
     try {
       const response = await this.callGemini(prompt + '\n\nGenerate one clear interview question.', {
         temperature: 0.7,
-        maxTokens: 250
+        maxTokens: 350
       });
 
       return response.text;
@@ -136,7 +136,7 @@ export class GeminiService {
     try {
       const response = await this.callGemini(prompt + '\n\nProvide JSON with scores and brief feedback.', {
         temperature: 0.3,
-        maxTokens: 300
+        maxTokens: 350
       });
 
       console.log('\n📥 RAW AI RESPONSE:');
@@ -182,32 +182,28 @@ export class GeminiService {
       // Validate scores are in 0-100 range
       const validateScore = (score) => Math.min(100, Math.max(0, score || 50));
       scores.communication = validateScore(scores.communication);
-      scores.correctness = validateScore(scores.correctness);
-      scores.depth = validateScore(scores.depth);
+      scores.technical = validateScore(scores.technical);
+      scores.overall = validateScore(scores.overall);
 
       console.log('\n=================================================================');
       console.log('  ⭐ AI GENERATED EVALUATION SCORES (0-100 scale)');
       console.log('=================================================================\n');
       
       const commScore = scores.communication;
-      const corrScore = scores.correctness;
-      const depthScore = scores.depth;
-      const avgScore = Math.round((commScore + corrScore + depthScore) / 3);
+      const techScore = scores.technical;
+      const overallScore = scores.overall;
       
-      console.log('  📊 COMMUNICATION SKILLS: ' + commScore + '/100');
+      console.log('  💬 COMMUNICATION SKILLS: ' + commScore + '/100');
       console.log('     ' + '█'.repeat(Math.floor(commScore / 10)) + '░'.repeat(10 - Math.floor(commScore / 10)));
-      console.log('     How clearly and effectively the answer is communicated\n');
+      console.log('     How clearly and professionally they communicate\n');
       
-      console.log('  ✓  CORRECTNESS: ' + corrScore + '/100');
-      console.log('     ' + '█'.repeat(Math.floor(corrScore / 10)) + '░'.repeat(10 - Math.floor(corrScore / 10)));
-      console.log('     Accuracy and validity of the technical content\n');
+      console.log('  🔧 TECHNICAL CORRECTNESS: ' + techScore + '/100');
+      console.log('     ' + '█'.repeat(Math.floor(techScore / 10)) + '░'.repeat(10 - Math.floor(techScore / 10)));
+      console.log('     Technical accuracy and problem-solving ability\n');
       
-      console.log('  🎯 DEPTH OF UNDERSTANDING: ' + depthScore + '/100');
-      console.log('     ' + '█'.repeat(Math.floor(depthScore / 10)) + '░'.repeat(10 - Math.floor(depthScore / 10)));
-      console.log('     Demonstrates thorough grasp of concepts\n');
-      
-      console.log('  🏆 AVERAGE SCORE: ' + avgScore + '/100');
-      console.log('     Overall performance rating\n');
+      console.log('  🎯 OVERALL PERFORMANCE: ' + overallScore + '/100');
+      console.log('     ' + '█'.repeat(Math.floor(overallScore / 10)) + '░'.repeat(10 - Math.floor(overallScore / 10)));
+      console.log('     Holistic interview readiness assessment\n');
       
       console.log('-----------------------------------------------------------------');
       console.log('💬 AI FEEDBACK:');
@@ -226,8 +222,8 @@ export class GeminiService {
       if (error.message.includes('credits exhausted') || error.message.includes('quota')) {
         const quotaError = {
           communication: 0,
-          correctness: 0,
-          depth: 0,
+          technical: 0,
+          overall: 0,
           brief_feedback: '⚠️ AI credits exhausted. Create new Google AI Studio project and update API key in settings, or wait 24 hours.'
         };
         console.log('⚠️ Using quota error response:', quotaError);
@@ -236,8 +232,8 @@ export class GeminiService {
       
       const fallbackScores = {
         communication: 50,
-        correctness: 50,
-        depth: 50,
+        technical: 50,
+        overall: 50,
         brief_feedback: 'Unable to evaluate - using default scores'
       };
       console.log('⚠️ Using fallback scores:', fallbackScores);
@@ -260,7 +256,7 @@ export class GeminiService {
     const scores = await this.scoreInterviewAnswer({ question, answer, code });
 
     console.log('✅ Scores generated');
-    console.log('📊 Communication:', scores.communication, '| Correctness:', scores.correctness, '| Depth:', scores.depth);
+    console.log('📊 Communication:', scores.communication, '| Technical:', scores.technical, '| Overall:', scores.overall);
 
     // Now generate a follow-up response based on the answer
     const followUpPrompt = `You are a professional interviewer conducting a DSA interview. The candidate just answered your question.
@@ -287,7 +283,7 @@ Keep it VERY brief (1-2 sentences max). Be professional and natural.`;
     try {
       const response = await this.callGemini(followUpPrompt + '\n\nKeep response concise but complete (1-2 sentences).', {
         temperature: 0.7,
-        maxTokens: 250
+        maxTokens: 350
       });
 
       console.log('✅ Follow-up response generated:', response.text);
@@ -309,7 +305,162 @@ Keep it VERY brief (1-2 sentences max). Be professional and natural.`;
   }
 
   /**
+   * UNIFIED Interview Response - Scores AND responds in one call
+   * This is the primary method for ALL interview mode interactions
+   */
+  async unifiedInterviewResponse(params) {
+    const { problem, questionsAsked, userMessage, currentCode, currentQuestion, isAnsweringQuestion } = params;
+
+    console.log('\n=================================================================');
+    console.log('  🎤 UNIFIED INTERVIEW RESPONSE - Score + Reply');
+    console.log('=================================================================\n');
+    console.log('📥 Input:');
+    console.log('  Problem:', problem?.title);
+    console.log('  Questions asked:', questionsAsked);
+    console.log('  User message:', userMessage?.substring(0, 100));
+    console.log('  Is answering question:', isAnsweringQuestion);
+    console.log('  Current question:', currentQuestion?.substring(0, 60));
+
+    // Determine context
+    let context = 'General interview conversation';
+    if (isAnsweringQuestion && currentQuestion) {
+      context = `Candidate is responding to interview question: "${currentQuestion}"`;
+    } else if (questionsAsked === 0) {
+      context = 'Interview just started, candidate is explaining their initial approach';
+    } else {
+      context = 'Candidate is thinking aloud or explaining their progress';
+    }
+
+    const prompt = GEMINI_PROMPTS.unifiedInterviewResponse
+      .replace('{{problem_title}}', problem?.title || 'Unknown Problem')
+      .replace('{{questions_asked}}', questionsAsked || 0)
+      .replace('{{context}}', context)
+      .replace('{{user_message}}', userMessage || 'No message')
+      .replace('{{current_code}}', currentCode?.substring(0, 500) || 'No code yet');
+
+    console.log('🚀 Sending unified request to Gemini...');
+
+    let response = null; // Declare outside try block for catch access
+    
+    try {
+      response = await this.callGemini(prompt + '\n\nReturn ONLY the JSON with scores, response, and interaction type.', {
+        temperature: 0.5,
+        maxTokens: 350
+      });
+
+      console.log('\n📥 RAW AI RESPONSE:');
+      console.log(response.text);
+
+      // Parse JSON response with better error handling
+      let jsonString = response.text.trim();
+      
+      console.log('🔍 Step 1 - Raw response length:', jsonString.length);
+      
+      // Remove markdown code blocks - try multiple patterns
+      // Pattern 1: ```json ... ```
+      let jsonMatch = jsonString.match(/```json\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        jsonString = jsonMatch[1].trim();
+        console.log('✅ Extracted from ```json block');
+      } else {
+        // Pattern 2: ``` ... ```
+        jsonMatch = jsonString.match(/```\s*([\s\S]*?)```/);
+        if (jsonMatch) {
+          jsonString = jsonMatch[1].trim();
+          console.log('✅ Extracted from ``` block');
+        } else {
+          // Pattern 3: Remove surrounding backticks
+          jsonString = jsonString.replace(/^`+|`+$/g, '').trim();
+          console.log('✅ Removed surrounding backticks');
+        }
+      }
+      
+      console.log('🔍 Step 2 - After markdown removal:', jsonString.substring(0, 100));
+      
+      // Find JSON object boundaries
+      if (!jsonString.startsWith('{')) {
+        console.log('⚠️ String does not start with {, searching for JSON object...');
+        const jsonObjMatch = jsonString.match(/\{[\s\S]*\}/);
+        if (jsonObjMatch) {
+          jsonString = jsonObjMatch[0];
+          console.log('✅ Extracted JSON object from text');
+        }
+      }
+      
+      // Clean up any remaining issues
+      jsonString = jsonString
+        .replace(/^[^{]*/, '') // Remove anything before first {
+        .replace(/[^}]*$/, '') // Remove anything after last }
+        .trim();
+      
+      console.log('🔍 Step 3 - Final JSON string:', jsonString.substring(0, 150));
+      console.log('🔍 First char:', jsonString.charAt(0), 'Last char:', jsonString.charAt(jsonString.length - 1));
+
+      const result = JSON.parse(jsonString);
+
+      // Validate and sanitize scores
+      const validateScore = (score) => Math.min(100, Math.max(0, score || 50));
+      result.scores.communication = validateScore(result.scores.communication);
+      result.scores.technical = validateScore(result.scores.technical);
+      result.scores.overall = validateScore(result.scores.overall);
+
+      console.log('\n✅ Parsed Response:');
+      console.log('📊 Scores:', result.scores);
+      console.log('💬 Interviewer response:', result.interviewer_response);
+      console.log('🏷️ Interaction type:', result.interaction_type);
+      console.log('=================================================================\n');
+
+      return {
+        scores: result.scores,
+        response: result.interviewer_response,
+        interactionType: result.interaction_type || 'conversation',
+        shouldScore: result.interaction_type === 'answer'
+      };
+
+    } catch (error) {
+      console.error('❌ Error in unified interview response:', error);
+      console.error('📋 Error name:', error.name);
+      console.error('📋 Error message:', error.message);
+      
+      if (error instanceof SyntaxError && response?.text) {
+        console.error('🔴 JSON PARSING ERROR - Raw response was:');
+        console.error(response.text);
+        console.warn('⚠️ Falling back to simple conversational response...');
+        
+        // If AI didn't return JSON, treat the response as a direct conversational reply
+        // and generate moderate scores since we can't evaluate properly
+        return {
+          scores: {
+            communication: 60,
+            technical: 60,
+            overall: 60,
+            brief_feedback: 'Conversational interaction'
+          },
+          response: response.text.trim().substring(0, 300), // Use AI's actual response
+          interactionType: 'conversation',
+          shouldScore: false
+        };
+      }
+      
+      // Complete fallback if no response at all
+      console.error('🔴 No response available, using hard fallback');
+      return {
+        scores: {
+          communication: 50,
+          technical: 50,
+          overall: 50,
+          brief_feedback: 'Unable to evaluate'
+        },
+        response: "I see. Can you elaborate on your approach?",
+        interactionType: 'conversation',
+        shouldScore: false
+      };
+    }
+  }
+
+  /**
    * Handle interview mode conversation (not answering a question)
+   * @deprecated Use unifiedInterviewResponse instead
    */
   async handleInterviewConversation(params) {
     console.log('🎯 handleInterviewConversation called');
@@ -334,7 +485,7 @@ Keep it VERY brief (1-2 sentences max). Be professional and natural.`;
     try {
       const response = await this.callGemini(prompt + '\n\nBe professional and complete your thought. 1-2 sentences.', {
         temperature: 0.8,
-        maxTokens: 250
+        maxTokens: 350
       });
 
       console.log('✅ Gemini API response received');
@@ -635,12 +786,12 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
 Problem Topics: ${problemTags.join(', ')}
 Problem Difficulty: ${problemDifficulty}
 Hints Used: ${hintsUsed}
-${interviewScores ? `Interview Scores: Communication ${interviewScores.communication}/10, Correctness ${interviewScores.correctness}/10, Depth ${interviewScores.depth}/10` : ''}
+${interviewScores ? `Interview Scores: Communication ${interviewScores.communication}/100, Technical ${interviewScores.technical}/100, Overall ${interviewScores.overall}/100` : ''}
 ${userAnswer ? `User's Answer: ${userAnswer.substring(0, 200)}` : ''}
 
 Based on this performance, classify each topic as either "strong" or "needs_practice":
-- Strong: User solved with minimal help (0-1 hints), good interview scores (>7/10), correct understanding
-- Needs Practice: User needed significant help (3+ hints), low scores (<5/10), or struggled with concepts
+- Strong: User solved with minimal help (0-1 hints), good interview scores (>70/100), correct understanding
+- Needs Practice: User needed significant help (3+ hints), low scores (<50/100), or struggled with concepts
 
 Return ONLY a JSON object with this exact format:
 {
