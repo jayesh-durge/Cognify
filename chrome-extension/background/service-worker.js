@@ -180,6 +180,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       switch (message.type) {
         case 'CHECK_AUTH':
           return await requireAuth();
+        
+        case 'COGNIFY_AUTH':
+          // Handle auth sync from dashboard (via content script bridge)
+          return await handleDashboardAuth(message.data);
+        
+        case 'COGNIFY_LOGOUT':
+          // Handle logout sync from dashboard
+          return await handleDashboardLogout();
           
         case 'EXTRACT_PROBLEM':
           return await handleProblemExtraction(message.data, sender);
@@ -1160,6 +1168,82 @@ async function handleSetAuth(data) {
   await firebaseService.setAuth(userId, token);
   console.log('✅ User authenticated:', userId);
   return { success: true };
+}
+
+/**
+ * Handle authentication sync from dashboard (via content script bridge)
+ */
+async function handleDashboardAuth(data) {
+  const { userId, token, displayName, email } = data;
+  
+  console.log('🔐 Dashboard auth sync received:', { userId, displayName, email });
+  
+  try {
+    // Store user data in extension storage
+    await chrome.storage.local.set({
+      user_id: userId,
+      auth_token: token,
+      user_profile: {
+        displayName,
+        email
+      }
+    });
+    
+    // Update auth service
+    if (!authService) {
+      authService = new AuthService();
+    }
+    await authService.init(); // Reload user from storage
+    
+    // Update Firebase service
+    firebaseService.userId = userId;
+    await firebaseService.init();
+    
+    console.log('✅ Dashboard auth synced successfully');
+    
+    return { 
+      success: true,
+      message: 'Authentication synced successfully',
+      user: { userId, displayName, email }
+    };
+  } catch (error) {
+    console.error('❌ Failed to sync dashboard auth:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to sync authentication'
+    };
+  }
+}
+
+/**
+ * Handle logout sync from dashboard
+ */
+async function handleDashboardLogout() {
+  console.log('🚪 Dashboard logout sync received');
+  
+  try {
+    // Clear extension storage
+    await chrome.storage.local.remove(['user_id', 'auth_token', 'user_profile']);
+    
+    // Update services
+    if (authService) {
+      authService.user = null;
+    }
+    firebaseService.userId = null;
+    
+    console.log('✅ Dashboard logout synced successfully');
+    
+    return {
+      success: true,
+      message: 'Logout synced successfully'
+    };
+  } catch (error) {
+    console.error('❌ Failed to sync dashboard logout:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to sync logout'
+    };
+  }
 }
 
 /**

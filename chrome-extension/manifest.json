@@ -56,8 +56,13 @@
       "run_at": "document_idle"
     },
     {
-      "matches": ["http://localhost:*/*", "http://127.0.0.1:*/*"],
-      "js": ["popup/auth-sync.js"],
+      "matches": [
+        "https://cognify-68642.web.app/*",
+        "https://cognify-68642.firebaseapp.com/*",
+        "http://localhost:*/*",
+        "http://127.0.0.1:*/*"
+      ],
+      "js": ["content-scripts/dashboard-bridge.js"],
       "run_at": "document_start",
       "all_frames": false
     }
@@ -80,6 +85,8 @@
     "*://*.geeksforgeeks.org/*",
     "https://generativelanguage.googleapis.com/*",
     "https://firestore.googleapis.com/*",
+    "https://cognify-68642.web.app/*",
+    "https://cognify-68642.firebaseapp.com/*",
     "http://localhost/*",
     "http://127.0.0.1/*"
   ],

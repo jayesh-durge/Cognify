@@ -37,7 +37,7 @@ export class AuthService {
         chrome.tabs.create({ url: dashboardUrl }, (tab) => {
           console.log('📱 Dashboard opened for sign-in');
           
-          // Listen for auth sync from dashboard
+          // Listen for auth sync from dashboard via content script bridge
           const listener = (changes, area) => {
             if (area === 'local' && changes.user_id) {
               console.log('✅ Auth received from dashboard');
@@ -53,7 +53,7 @@ export class AuthService {
                   resolve({ 
                     success: true, 
                     user: this.user,
-                    message: 'Signed in successfully! You can close the dashboard tab.'
+                    message: 'Signed in successfully! The extension is now synced.'
                   });
                 }
               });

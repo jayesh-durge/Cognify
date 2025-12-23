@@ -1,14 +1,30 @@
 # Cognify Chrome Extension 🧩
 
+> **⚠️ INSTALLATION REQUIRED**: This extension is **pending Chrome Web Store approval**. For now, please install it manually as an unpacked extension (takes 2 minutes). See detailed guide: [USER_INSTALLATION_GUIDE.md](./USER_INSTALLATION_GUIDE.md)
+
 **Local Installation Required** - This extension runs on YOUR computer to provide AI assistance while you code.
 
 Get real-time AI hints, learn problem-solving approaches, and track your progress across multiple coding platforms - all from your browser!
 
-🌐 **Web Dashboard (Online):** [https://cognify-68642.web.app/](https://cognify-68642.web.app/)
+🌐 **Web Dashboard (Hosted & Live):** [https://cognify-68642.web.app/](https://cognify-68642.web.app/)
 
 ---
 
-## 🎯 Quick Installation Guide (5 Minutes)
+## 🚀 Quick Start for Users
+
+**Two Components:**
+1. ✅ **Web Dashboard** - Already hosted and ready at [cognify-68642.web.app](https://cognify-68642.web.app/)
+2. 📦 **Chrome Extension** - Download and install manually (see below)
+
+### Why Manual Installation?
+
+The extension is currently **awaiting Chrome Web Store approval** (takes 5-7 days). Meanwhile, you can use the full functionality by loading it as an unpacked extension!
+
+**📖 Detailed Installation Guide:** See [USER_INSTALLATION_GUIDE.md](./USER_INSTALLATION_GUIDE.md) for step-by-step instructions with troubleshooting.
+
+---
+
+## 🎯 Quick Installation Guide (2 Minutes)
 
 ### Step 1: Download the Extension
 

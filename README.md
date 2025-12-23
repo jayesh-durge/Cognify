@@ -17,12 +17,26 @@
 
 ---
 
-> ### ⚡ Two Components, Two Setup Methods:
+> ### 🎉 **Current Status (December 2025)**
 > 
-> | Component | Setup Method | Link |
-> |-----------|--------------|------|
-> | 🧩 **Chrome Extension** | ⬇️ Download & Install Locally | [Download](#step-1-download--install-chrome-extension-local-setup) |
-> | 📊 **Web Dashboard** | 🌐 Use Online (Already Hosted) | [Open Dashboard](https://cognify-68642.web.app/) |
+> | Component | Status | Access Method |
+> |-----------|--------|---------------|
+> | 🌐 **Web Dashboard** | ✅ **LIVE** - Hosted on Firebase | **Visit**: [cognify-68642.web.app](https://cognify-68642.web.app/) |
+> | 🧩 **Chrome Extension** | ⏳ **Pending Chrome Web Store Approval** | **Download & Load Manually** (2 min setup) |
+> 
+> **👉 Users**: The extension works perfectly when loaded manually! Full functionality available now.  
+> **📖 Guide**: See [USER_INSTALLATION_GUIDE.md](chrome-extension/USER_INSTALLATION_GUIDE.md) for step-by-step instructions.
+>
+> **🔐 Authentication Sync**: ✅ Works seamlessly between hosted dashboard and local extension!
+
+---
+
+## ⚡ Two Components, One Seamless Experience
+
+| Component | Setup Method | Link |
+|-----------|--------------|------|
+| 🧩 **Chrome Extension** | ⬇️ Download & Load as Unpacked | [Guide](chrome-extension/USER_INSTALLATION_GUIDE.md) |
+| 📊 **Web Dashboard** | 🌐 Already Live - Just Visit! | [Open Dashboard](https://cognify-68642.web.app/) |
 
 ---
 
