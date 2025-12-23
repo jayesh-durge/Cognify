@@ -155,29 +155,50 @@
       opacity: 0.9;
     }
 
-    .start-btn {
-      width: 100%;
-      padding: 15px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      border-radius: 10px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
+    .platform-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
     }
 
-    .start-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    .platform-btn {
+      background: white;
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .platform-btn:hover {
+      border-color: #667eea;
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
+    }
+
+    .platform-icon {
+      font-size: 36px;
+    }
+
+    .platform-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: #333;
     }
 
     .footer {
       margin-top: 30px;
       text-align: center;
       color: #999;
-      font-size: 13px;
+      fplatform-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .ont-size: 13px;
     }
 
     .footer a {
@@ -244,14 +265,32 @@
           <div class="action-card-desc">Configure your Gemini API key to enable AI features</div>
         </a>
 
-        <a href="https://cognify-dashboard.vercel.app" target="_blank" class="action-card">
+        <a href="#" id="dashboardLink" class="action-card">
           <span class="action-card-icon">📈</span>
           <div class="action-card-title">Dashboard</div>
           <div class="action-card-desc">View your stats and progress in the web dashboard</div>
         </a>
       </div>
 
-      <button class="start-btn" id="startBtn">Start Practicing on LeetCode</button>
+      <h2 class="action-title" style="margin-top: 20px;">Supported Platforms</h2>
+      <div class="platform-grid">
+        <button class="platform-btn" data-url="https://leetcode.com/problemset/">
+          <span class="platform-icon">💻</span>
+          <span class="platform-name">LeetCode</span>
+        </button>
+        <button class="platform-btn" data-url="https://www.codechef.com/practice">
+          <span class="platform-icon">👨‍🍳</span>
+          <span class="platform-name">CodeChef</span>
+        </button>
+        <button class="platform-btn" data-url="https://codeforces.com/problemset">
+          <span class="platform-icon">⚔️</span>
+          <span class="platform-name">Codeforces</span>
+        </button>
+        <button class="platform-btn" data-url="https://practice.geeksforgeeks.org/explore">
+          <span class="platform-icon">🤓</span>
+          <span class="platform-name">GeeksforGeeks</span>
+        </button>
+      </div>
     </div>
 
     <div class="footer">

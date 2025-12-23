@@ -3,14 +3,32 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  const startBtn = document.getElementById('startBtn');
+  const dashboardLink = document.getElementById('dashboardLink');
+  const platformBtns = document.querySelectorAll('.platform-btn');
 
-  // Handle start practicing button
-  startBtn.addEventListener('click', () => {
-    // Open LeetCode in a new tab
-    chrome.tabs.create({ url: 'https://leetcode.com/problemset/' }, () => {
-      // Close the welcome page
-      window.close();
+  // Get dashboard URL from storage or use default
+  chrome.storage.local.get(['dashboardUrl'], (result) => {
+    const dashboardUrl = result.dashboardUrl || 'http://localhost:3000';
+    dashboardLink.href = dashboardUrl;
+  });
+
+  // Handle dashboard link click
+  dashboardLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    chrome.storage.local.get(['dashboardUrl'], (result) => {
+      const dashboardUrl = result.dashboardUrl || 'http://localhost:3000';
+      chrome.tabs.create({ url: dashboardUrl });
+    });
+  });
+
+  // Handle platform button clicks
+  platformBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const url = btn.getAttribute('data-url');
+      chrome.tabs.create({ url: url }, () => {
+        // Close the welcome page
+        window.close();
+      });
     });
   });
 
@@ -22,3 +40,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
   console.log('✅ Cognify welcome page loaded');
 });
+
