@@ -49,7 +49,7 @@ export class GeminiService {
 
       const response = await this.callGemini(prompt + '\n\nBe concise and brief.', {
         temperature: 0.3,
-        maxTokens: 300
+        maxTokens: 400
       });
 
       return this.parseAnalysis(response);
@@ -93,7 +93,7 @@ export class GeminiService {
     try {
       const response = await this.callGemini(prompt + '\n\nGenerate one clear interview question.', {
         temperature: 0.7,
-        maxTokens: 350
+        maxTokens: 400
       });
 
       return response.text;
@@ -136,7 +136,7 @@ export class GeminiService {
     try {
       const response = await this.callGemini(prompt + '\n\nProvide JSON with scores and brief feedback.', {
         temperature: 0.3,
-        maxTokens: 350
+        maxTokens: 400
       });
 
       console.log('\n📥 RAW AI RESPONSE:');
@@ -283,7 +283,7 @@ Keep it VERY brief (1-2 sentences max). Be professional and natural.`;
     try {
       const response = await this.callGemini(followUpPrompt + '\n\nKeep response concise but complete (1-2 sentences).', {
         temperature: 0.7,
-        maxTokens: 350
+        maxTokens: 400
       });
 
       console.log('✅ Follow-up response generated:', response.text);
@@ -345,7 +345,7 @@ Keep it VERY brief (1-2 sentences max). Be professional and natural.`;
     try {
       response = await this.callGemini(prompt + '\n\nReturn ONLY the JSON with scores, response, and interaction type.', {
         temperature: 0.5,
-        maxTokens: 350
+        maxTokens: 400
       });
 
       console.log('\n📥 RAW AI RESPONSE:');
@@ -485,7 +485,7 @@ Keep it VERY brief (1-2 sentences max). Be professional and natural.`;
     try {
       const response = await this.callGemini(prompt + '\n\nBe professional and complete your thought. 1-2 sentences.', {
         temperature: 0.8,
-        maxTokens: 350
+        maxTokens: 400
       });
 
       console.log('✅ Gemini API response received');
@@ -580,7 +580,7 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
     try {
       const response = await this.callGemini(prompt + '\n\nBe helpful but concise. 2-4 sentences maximum.', {
         temperature: 0.7,
-        maxTokens: 350,
+        maxTokens: 400,
         systemInstruction: systemInstruction
       });
 
@@ -626,7 +626,7 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
 
     const response = await this.callGemini(prompt + '\n\nBe concise. Maximum 4 sentences.', {
       temperature: 0.4,
-      maxTokens: 350,
+      maxTokens: 400,
       systemInstruction: GEMINI_PROMPTS.systemRules.explainWhyNotHow
     });
 
@@ -656,7 +656,7 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
 
     const response = await this.callGemini(prompt, {
       temperature: 0.8,
-      maxTokens: 300
+      maxTokens: 400
     });
 
     return {
@@ -683,7 +683,7 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
 
     const response = await this.callGemini(prompt, {
       temperature: 0.3,
-      maxTokens: 350
+      maxTokens: 400
     });
 
     return {
@@ -714,7 +714,7 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
 
     const response = await this.callGemini(prompt, {
       temperature: 0.5,
-      maxTokens: 350
+      maxTokens: 400
     });
 
     return {
@@ -744,7 +744,7 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
 
     const response = await this.callGemini(prompt + '\n\nBe concise and clear. Maximum 5 sentences.', {
       temperature: 0.7,
-      maxTokens: 350
+      maxTokens: 400
     });
 
     return {
@@ -769,7 +769,7 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
 
     const response = await this.callGemini(prompt, {
       temperature: 0.4,
-      maxTokens: 300
+      maxTokens: 400
     });
 
     return response.metadata?.problems || [];
@@ -803,7 +803,7 @@ Return ONLY a JSON object with this exact format:
     try {
       const response = await this.callGemini(prompt, {
         temperature: 0.3,
-        maxTokens: 250
+        maxTokens: 400
       });
 
       let jsonString = response.text.trim();
@@ -841,7 +841,7 @@ Return ONLY a JSON object with this exact format:
 
     const response = await this.callGemini(prompt, {
       temperature: 0.6,
-      maxTokens: 350
+      maxTokens: 400
     });
 
     return {
@@ -877,7 +877,7 @@ Return ONLY a JSON object with this exact format:
       }],
       generationConfig: {
         temperature: options.temperature || 0.7,
-        maxOutputTokens: options.maxTokens || 500,
+        maxOutputTokens: options.maxTokens || 400,
         topP: 0.8,
         topK: 40
       },

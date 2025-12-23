@@ -1,7 +1,7 @@
 import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { LogOut, BarChart3 } from 'lucide-react'
+import { LogOut, BarChart3, Download } from 'lucide-react'
 
 export default function Navbar() {
   const { user, signOut } = useAuth()
@@ -35,6 +35,15 @@ export default function Navbar() {
             <NavLink to="/progress">
               Progress
             </NavLink>
+            <a
+              href="https://github.com/jayesh-durge/Cognify/archive/refs/heads/main.zip"
+              download
+              className="flex items-center space-x-1 text-gray-300 hover:text-primary-400 font-medium transition-colors"
+              title="Download Extension"
+            >
+              <Download size={18} />
+              <span>Extension</span>
+            </a>
           </div>
 
           {/* User Menu */}
