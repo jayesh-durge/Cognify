@@ -96,11 +96,6 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   
   // Set up midnight reset alarm
   setupMidnightReset();
-
-  // Open onboarding on first install
-  if (details.reason === 'install') {
-    chrome.tabs.create({ url: chrome.runtime.getURL('onboarding/welcome.html') });
-  }
 });
 
 // Listen for storage changes to reload API key and user auth
