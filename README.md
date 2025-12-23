@@ -47,7 +47,7 @@
 **The Chrome Extension runs on YOUR computer:**
 
 1. **Download the Extension**
-   - [📥 Download Cognify Extension ZIP](https://github.com/jayesh-durge/Cognify/archive/refs/heads/main.zip)
+   - [📥 Download Cognify Extension ZIP](http://github.com/jayesh-durge/Cognify/archive/refs/heads/main/chrome-extension.zip)
    - Extract the ZIP file to a permanent folder on your computer
    - ⚠️ **Important:** Keep this folder - don't delete it after installation!
 
