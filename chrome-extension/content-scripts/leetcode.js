@@ -352,12 +352,39 @@
   function setupPanelListeners() {
     // Mode switching
     document.querySelectorAll('.mode-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', async (e) => {
         document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
         e.target.classList.add('active');
         const mode = e.target.dataset.mode;
         chrome.storage.local.set({ mode });
-        addMessage(`Switched to ${mode} mode`, 'system');
+        
+        // Notify background about mode change
+        const code = extractCodeFromEditor();
+        chrome.runtime.sendMessage({
+          type: 'MODE_CHANGED',
+          data: { mode, currentCode: code }
+        }, (response) => {
+          console.log('MODE_CHANGED response:', response);
+          
+          if (response?.success) {
+            if (mode === 'interview' && response.firstQuestion) {
+              // Display first interview question
+              addMessage(response.firstQuestion, 'interviewer');
+              addMessage(`Switched to ${mode} mode. Please answer the question above.`, 'system');
+            } else {
+              addMessage(`Switched to ${mode} mode`, 'system');
+            }
+          } else if (response?.error) {
+            // Handle error - likely problem not extracted
+            console.error('Failed to switch to interview mode:', response.error);
+            addMessage(`❌ ${response.error}`, 'system');
+            
+            // Revert to practice mode in UI
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.mode-btn[data-mode="practice"]')?.classList.add('active');
+            chrome.storage.local.set({ mode: 'practice' });
+          }
+        });
         
         // Show/hide status based on mode
         const statusSection = document.querySelector('.cognify-status');
@@ -464,13 +491,35 @@
       }
       
       if (response?.success) {
+        // Check if interview was completed
+        if (response.interviewComplete && response.scores) {
+          console.log('🎉 Interview completed with scores:', response.scores);
+          const mentorResponse = response.hint.question;
+          addMessage(mentorResponse, 'interviewer');
+          
+          // Automatically mark as solved
+          addMessage('🎉 Marking as solved and syncing to dashboard...', 'system');
+          markProblemSolved();
+          return;
+        }
+        
+        // Check if this was a scored answer (interview mode)
+        if (response.hint?.metadata?.scoredAnswer) {
+          // Don't add message - answer was scored silently
+          console.log('✅ Answer scored successfully');
+          return;
+        }
+        
         const mentorResponse = response.hint.question;
         console.log('📩 Received mentor response:', {
           fullLength: mentorResponse?.length,
           preview: mentorResponse?.substring(0, 100),
           hasQuestion: !!response.hint.question
         });
-        addMessage(mentorResponse, 'mentor');
+        
+        // Determine message type based on mode
+        const messageType = response.mode === 'interview' ? 'interviewer' : 'mentor';
+        addMessage(mentorResponse, messageType);
         
         // Add to conversation history
         conversationHistory.push({
@@ -583,11 +632,28 @@
       type: 'PROBLEM_SOLVED',
       data: {
         problemData,
-        sessionData
+        sessionData,
+        completedFromButton: true // Signal that user clicked the button
       }
     }, (response) => {
       if (response?.success) {
-        addMessage('✅ Problem logged to your dashboard! Check your progress there.', 'mentor');
+        // Check if this was an interview completion with scores
+        if (response.interviewComplete && response.scores) {
+          console.log('🎯 Interview completed with scores:', response.scores);
+          
+          // Display comprehensive score breakdown
+          const scoreMessage = `🎉 Interview Complete!\n\n📊 Final Scores:\n` +
+            `• Communication: ${response.scores.communication}/10\n` +
+            `• Technical: ${response.scores.technical}/10\n` +
+            `• Overall: ${response.scores.overall}/10\n\n` +
+            (response.scores.strengths.length > 0 ? `💪 Strengths: ${response.scores.strengths.join(', ')}\n` : '') +
+            (response.scores.improvements.length > 0 ? `📈 Areas to Improve: ${response.scores.improvements.join(', ')}\n\n` : '') +
+            `✅ Report saved to your dashboard!`;
+          
+          addMessage(scoreMessage, 'interviewer');
+        } else {
+          addMessage('✅ Problem logged to your dashboard! Check your progress there.', 'mentor');
+        }
         
         // Visual feedback
         const solvedBtn = document.getElementById('cognify-solved');
@@ -848,10 +914,64 @@
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.type === 'REFRESH_PROBLEM') {
         extractProblemData();
+        sendResponse({ received: true });
+      } else if (message.type === 'INTERVIEW_QUESTION') {
+        // Automated interview question arrived
+        const { question, questionNumber } = message;
+        addMessage(`Question ${questionNumber}/4: ${question}`, 'interviewer');
+        sendResponse({ received: true });
+      } else if (message.type === 'GET_CURRENT_CODE') {
+        // Background needs current code for question generation
+        const code = extractCodeFromEditor();
+        sendResponse({ code: code });
       }
-      sendResponse({ received: true });
       return true;
     });
   }
-
+  
+  /**
+   * Add message to chat with special handling for interviewer
+   */
+  function addMessage(text, type) {
+    // Don't display empty messages (from scoring responses)
+    if (!text || text.trim() === '') return;
+    
+    const messagesDiv = document.getElementById('cognify-messages');
+    if (!messagesDiv) {
+      console.error('❌ Chat messages container not found!');
+      return;
+    }
+    
+    const messageEl = document.createElement('div');
+    messageEl.className = `message message-${type}`;
+    
+    // Create icon span
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'message-icon';
+    
+    // Different icons for interviewer vs mentor
+    if (type === 'interviewer') {
+      iconSpan.textContent = '👔'; // Interviewer icon
+    } else {
+      iconSpan.textContent = type === 'mentor' ? '🧠' : type === 'user' ? '👤' : type === 'error' ? '❌' : 'ℹ️';
+    }
+    
+    // Create text span
+    const textSpan = document.createElement('span');
+    textSpan.className = 'message-text';
+    textSpan.textContent = text;
+    
+    messageEl.appendChild(iconSpan);
+    messageEl.appendChild(textSpan);
+    
+    messagesDiv.appendChild(messageEl);
+    
+    // Smooth scroll to bottom
+    setTimeout(() => {
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }, 50);
+    
+    // Log full message for debugging
+    console.log('✅ Message added:', type, text.substring(0, 100));
+  }
 })();

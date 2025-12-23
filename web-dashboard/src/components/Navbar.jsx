@@ -13,7 +13,7 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-200">
+    <nav className="bg-gray-900 shadow-lg border-b border-gray-800">
       <div className="container mx-auto px-4 max-w-7xl">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -46,16 +46,16 @@ export default function Navbar() {
               <img
                 src={user?.photoURL || '/default-avatar.png'}
                 alt={user?.displayName || 'User'}
-                className="w-8 h-8 rounded-full"
+                className="w-8 h-8 rounded-full border-2 border-gray-700"
               />
-              <span className="hidden md:block text-sm font-medium text-gray-700">
+              <span className="hidden md:block text-sm font-medium text-gray-200">
                 {user?.displayName}
               </span>
             </div>
 
             <button
               onClick={handleSignOut}
-              className="p-2 text-gray-600 hover:text-red-500 transition-colors"
+              className="p-2 text-gray-400 hover:text-red-400 transition-colors"
               title="Sign Out"
             >
               <LogOut size={20} />
@@ -71,7 +71,7 @@ function NavLink({ to, children, icon }) {
   return (
     <Link
       to={to}
-      className="flex items-center space-x-1 text-gray-700 hover:text-primary-500 font-medium transition-colors"
+      className="flex items-center space-x-1 text-gray-300 hover:text-primary-400 font-medium transition-colors"
     >
       {icon}
       <span>{children}</span>

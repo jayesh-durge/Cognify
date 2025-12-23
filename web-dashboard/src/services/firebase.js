@@ -113,22 +113,39 @@ export const getUserProblems = async (userId, limitCount = 50) => {
 
 export const getInterviewReports = async (userId, limitCount = 10) => {
   try {
+    console.log('🎤 Fetching interviews for user:', userId)
+    console.log('📂 Collection path: users/' + userId + '/interviews')
+    
     // Simple query without orderBy to avoid index requirement
     const interviewsRef = collection(db, 'users', userId, 'interviews')
     const snapshot = await getDocs(interviewsRef)
     
+    console.log('📊 Raw Firestore snapshot size:', snapshot.size, 'documents')
+    
+    if (snapshot.empty) {
+      console.warn('⚠️ No interview documents found in Firestore')
+      console.log('💡 Make sure interviews are being saved from extension')
+      return { data: [], error: null }
+    }
+    
     // Sort in JavaScript instead of Firestore
     const reports = snapshot.docs
-      .map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }))
+      .map(doc => {
+        const data = {
+          id: doc.id,
+          ...doc.data()
+        }
+        console.log('📄 Interview document:', doc.id, data)
+        return data
+      })
       .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
       .slice(0, limitCount)
     
+    console.log('✅ Returning', reports.length, 'interview reports')
     return { data: reports, error: null }
   } catch (error) {
-    console.error('Error fetching interviews:', error)
+    console.error('❌ Error fetching interviews:', error)
+    console.error('❌ Error details:', error.message, error.code)
     // Return empty array instead of failing
     return { data: [], error: null }
   }
@@ -195,6 +212,41 @@ export const getUserInteractions = async (userId, limitCount = 100) => {
   } catch (error) {
     console.error('Error fetching interactions:', error)
     return { data: [], error: error.message }
+  }
+}
+
+/**
+ * Get user analytics (strengths, weaknesses, overall stats)
+ */
+export async function getUserAnalytics(userId) {
+  console.log('📊 Fetching analytics for user:', userId)
+  
+  try {
+    const analyticsRef = doc(db, 'users', userId, 'analytics', 'summary')
+    const analyticsSnap = await getDoc(analyticsRef)
+    
+    if (analyticsSnap.exists()) {
+      const data = analyticsSnap.data()
+      console.log('✅ Analytics found:', data)
+      return { success: true, data }
+    } else {
+      console.log('⚠️ No analytics data found, returning defaults')
+      return {
+        success: true,
+        data: {
+          totalInterviews: 0,
+          totalPractice: 0,
+          avgCommunicationScore: 0,
+          avgTechnicalScore: 0,
+          avgOverallScore: 0,
+          strengths: [],
+          weaknesses: []
+        }
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error fetching analytics:', error)
+    return { success: false, error: error.message, data: null }
   }
 }
 

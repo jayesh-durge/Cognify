@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { getUserStats, getInterviewReports, getUserActivities, getProgressData, getUserProblems } from '../services/firebase'
+import { getUserStats, getInterviewReports, getUserActivities, getProgressData, getUserProblems, getUserAnalytics } from '../services/firebase'
 import { TrendingUp, Trophy, Target, Clock, Award, Brain, Activity, Zap, CheckCircle, Code } from 'lucide-react'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
@@ -11,6 +11,7 @@ export default function Dashboard() {
   const [activities, setActivities] = useState([])
   const [progressData, setProgressData] = useState(null)
   const [problems, setProblems] = useState([])
+  const [analytics, setAnalytics] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -24,22 +25,36 @@ export default function Dashboard() {
   const loadDashboardData = async () => {
     if (!user) return
 
+    console.log('📊 Loading dashboard data for user:', user.uid)
     setLoading(true)
 
     // Load all data including problems for accurate count
-    const [statsResult, interviewsResult, activitiesResult, progressResult, problemsResult] = await Promise.all([
+    const [statsResult, interviewsResult, activitiesResult, progressResult, problemsResult, analyticsResult] = await Promise.all([
       getUserStats(user.uid),
-      getInterviewReports(user.uid, 5),
+      getInterviewReports(user.uid, 20), // Fetch last 20 interviews for better graph
       getUserActivities(user.uid, 20),
       getProgressData(user.uid),
-      getUserProblems(user.uid, 1000)
+      getUserProblems(user.uid, 1000),
+      getUserAnalytics(user.uid)
     ])
 
+    console.log('📈 Stats loaded:', statsResult.data)
+    console.log('🎤 Interviews loaded:', interviewsResult.data?.length || 0, 'interviews')
+    console.log('🎤 Interview data:', interviewsResult.data)
+    console.log('📝 Activities loaded:', activitiesResult.data?.length || 0, 'activities')
+    console.log('📊 Progress loaded:', progressResult.data)
+    console.log('✅ Problems loaded:', problemsResult.data?.length || 0, 'problems')
+    console.log('🎯 Analytics loaded:', analyticsResult.data)
+
     if (statsResult.data) setStats(statsResult.data)
-    if (interviewsResult.data) setRecentInterviews(interviewsResult.data)
+    if (interviewsResult.data) {
+      console.log('✅ Setting recentInterviews state with', interviewsResult.data.length, 'interviews')
+      setRecentInterviews(interviewsResult.data)
+    }
     if (activitiesResult.data) setActivities(activitiesResult.data)
     if (progressResult.data) setProgressData(progressResult.data)
     if (problemsResult.data) setProblems(problemsResult.data)
+    if (analyticsResult.data) setAnalytics(analyticsResult.data)
 
     setLoading(false)
   }
@@ -47,7 +62,7 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-500">Loading dashboard...</div>
+        <div className="text-gray-400">Loading dashboard...</div>
       </div>
     )
   }
@@ -68,8 +83,8 @@ export default function Dashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user.displayName?.split(' ')[0]}! 👋</h1>
-        <p className="text-gray-600 mt-1">Here's your interview preparation progress</p>
+        <h1 className="text-3xl font-bold text-white">Welcome back, {user.displayName?.split(' ')[0]}! 👋</h1>
+        <p className="text-gray-400 mt-1">Here's your interview preparation progress</p>
       </div>
 
       {/* Stats Grid */}
@@ -87,15 +102,24 @@ export default function Dashboard() {
         <StatCard
           icon={<Target className="text-primary-500" />}
           label="Interview Score"
-          value={`${Math.round(stats?.avgInterviewScore || 0)}/100`}
-          trend="Above average"
+          value={recentInterviews.length > 0 
+            ? `${recentInterviews[0]?.scores?.overall || recentInterviews[0]?.overallScore || 0}/10`
+            : '0/10'
+          }
+          trend={recentInterviews.length > 0 ? 'Latest interview' : 'No interviews yet'}
           trendUp={true}
         />
         <StatCard
           icon={<Clock className="text-blue-500" />}
           label="Total Interviews"
-          value={stats?.totalInterviews || 0}
-          trend="+2 this month"
+          value={recentInterviews.length}
+          trend={recentInterviews.length > 0 
+            ? `${recentInterviews.filter(i => {
+                const monthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+                return i.timestamp >= monthAgo;
+              }).length} this month`
+            : 'Start practicing'
+          }
           trendUp={true}
         />
       </div>
@@ -103,57 +127,227 @@ export default function Dashboard() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 gap-6">
         {/* Interview Performance Trend */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Interview Performance</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={recentInterviews.map((interview, idx) => ({
-              name: `Interview ${recentInterviews.length - idx}`,
-              score: interview.report?.overallScore || 0,
-              communication: interview.report?.communication || 0,
-              technical: interview.report?.technicalSkill || 0
-            }))}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis domain={[0, 100]} />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="score" stroke="#667eea" strokeWidth={2} />
-              <Line type="monotone" dataKey="communication" stroke="#10b981" strokeWidth={2} />
-              <Line type="monotone" dataKey="technical" stroke="#f59e0b" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
+        <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl shadow-lg p-6 border border-gray-700">
+          {/* Header with Stats */}
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-2">Interview Performance</h3>
+              <div className="flex items-center gap-6 text-sm">
+                <div>
+                  <span className="text-gray-400">Latest Score: </span>
+                  <span className="text-white font-bold text-lg">
+                    {recentInterviews[0]?.scores?.overall || recentInterviews[0]?.overallScore || 0}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Total Interviews: </span>
+                  <span className="text-white font-semibold">{recentInterviews.length}</span>
+                </div>
+              </div>
+            </div>
+            {/* Legend */}
+            <div className="space-y-1 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#667eea]"></div>
+                <span className="text-gray-300">Overall</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#10b981]"></div>
+                <span className="text-gray-300">Communication</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#f59e0b]"></div>
+                <span className="text-gray-300">Technical</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Graph */}
+          {recentInterviews.length === 0 ? (
+            <div className="flex items-center justify-center h-64 text-gray-400">
+              <p>Complete interviews to see your performance tracking</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart 
+                data={recentInterviews.slice().reverse().map((interview, idx) => ({
+                  name: `#${idx + 1}`,
+                  overall: interview.scores?.overall || interview.overallScore || 0,
+                  communication: interview.scores?.communication || interview.report?.communication || 0,
+                  technical: interview.scores?.technical || interview.report?.technicalSkill || 0,
+                  date: new Date(interview.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                }))}
+                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                <XAxis 
+                  dataKey="name" 
+                  stroke="#9ca3af" 
+                  tick={{ fill: '#9ca3af', fontSize: 12 }}
+                  axisLine={{ stroke: '#374151' }}
+                />
+                <YAxis 
+                  domain={[0, 10]} 
+                  stroke="#9ca3af"
+                  tick={{ fill: '#9ca3af', fontSize: 12 }}
+                  axisLine={{ stroke: '#374151' }}
+                  ticks={[0, 2, 4, 6, 8, 10]}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: '#1f2937', 
+                    border: '1px solid #374151',
+                    borderRadius: '8px',
+                    color: '#fff'
+                  }}
+                  labelStyle={{ color: '#9ca3af' }}
+                  formatter={(value, name) => {
+                    const labels = {
+                      overall: 'Overall',
+                      communication: 'Communication',
+                      technical: 'Technical'
+                    };
+                    return [`${value}/10`, labels[name] || name];
+                  }}
+                  labelFormatter={(label, payload) => {
+                    if (payload && payload[0]) {
+                      return `Interview ${label} - ${payload[0].payload.date}`;
+                    }
+                    return label;
+                  }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="overall" 
+                  stroke="#667eea" 
+                  strokeWidth={3}
+                  dot={{ fill: '#667eea', r: 4, strokeWidth: 2, stroke: '#1f2937' }}
+                  activeDot={{ r: 6, strokeWidth: 2, stroke: '#667eea' }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="communication" 
+                  stroke="#10b981" 
+                  strokeWidth={2.5}
+                  dot={{ fill: '#10b981', r: 3, strokeWidth: 2, stroke: '#1f2937' }}
+                  activeDot={{ r: 5, strokeWidth: 2, stroke: '#10b981' }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="technical" 
+                  stroke="#f59e0b" 
+                  strokeWidth={2.5}
+                  dot={{ fill: '#f59e0b', r: 3, strokeWidth: 2, stroke: '#1f2937' }}
+                  activeDot={{ r: 5, strokeWidth: 2, stroke: '#f59e0b' }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
+
+      {/* Analytics Section - Strengths & Weaknesses */}
+      {analytics && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Strengths */}
+          <div className="bg-gradient-to-br from-green-900/20 to-gray-800 rounded-xl shadow-lg p-6 border border-green-700/30">
+            <div className="flex items-center gap-3 mb-4">
+              <Trophy className="text-green-500" size={24} />
+              <h3 className="text-lg font-semibold text-white">Your Strengths</h3>
+            </div>
+            <p className="text-sm text-gray-400 mb-4">
+              Topics where you consistently need fewer hints (&lt; 2 avg)
+            </p>
+            {analytics.strengths && analytics.strengths.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {analytics.strengths.map((strength, idx) => (
+                  <span
+                    key={idx}
+                    className="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-sm font-medium border border-green-500/30"
+                  >
+                    {strength}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 italic">
+                Complete more problems to identify your strengths
+              </p>
+            )}
+            {analytics.totalInterviews > 0 && (
+              <div className="mt-4 pt-4 border-t border-green-700/20">
+                <p className="text-xs text-gray-400">
+                  Based on {analytics.totalInterviews} interview{analytics.totalInterviews !== 1 ? 's' : ''} and {analytics.totalPractice || 0} practice session{analytics.totalPractice !== 1 ? 's' : ''}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Weaknesses */}
+          <div className="bg-gradient-to-br from-orange-900/20 to-gray-800 rounded-xl shadow-lg p-6 border border-orange-700/30">
+            <div className="flex items-center gap-3 mb-4">
+              <Target className="text-orange-500" size={24} />
+              <h3 className="text-lg font-semibold text-white">Areas to Improve</h3>
+            </div>
+            <p className="text-sm text-gray-400 mb-4">
+              Topics where you need more practice (≥ 3 hints avg)
+            </p>
+            {analytics.weaknesses && analytics.weaknesses.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {analytics.weaknesses.map((weakness, idx) => (
+                  <span
+                    key={idx}
+                    className="px-3 py-1.5 bg-orange-500/20 text-orange-400 rounded-lg text-sm font-medium border border-orange-500/30"
+                  >
+                    {weakness}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 italic">
+                Complete more problems to identify areas for improvement
+              </p>
+            )}
+            {analytics.avgOverallScore > 0 && (
+              <div className="mt-4 pt-4 border-t border-orange-700/20">
+                <p className="text-xs text-gray-400">
+                  Average Interview Score: <span className="text-white font-semibold">{analytics.avgOverallScore}/10</span>
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Topics Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Strong Topics */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+        <div className="bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-700">
+          <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
             <Award className="text-green-500 mr-2" size={20} />
             Strong Topics
           </h3>
           <div className="space-y-2">
             {(stats?.strongTopics || ['Arrays', 'Strings']).map((topic, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                <span className="font-medium text-gray-700">{topic}</span>
-                <span className="text-green-600 text-sm font-semibold">✓ Proficient</span>
+              <div key={idx} className="flex items-center justify-between p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                <span className="font-medium text-gray-200">{topic}</span>
+                <span className="text-green-400 text-sm font-semibold">✓ Proficient</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Weak Topics */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+        <div className="bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-700">
+          <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
             <Target className="text-orange-500 mr-2" size={20} />
             Focus Areas
           </h3>
           <div className="space-y-2">
             {(stats?.weakTopics || ['Dynamic Programming', 'Graphs']).map((topic, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
-                <span className="font-medium text-gray-700">{topic}</span>
-                <span className="text-orange-600 text-sm font-semibold">Practice more</span>
+              <div key={idx} className="flex items-center justify-between p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+                <span className="font-medium text-gray-200">{topic}</span>
+                <span className="text-orange-400 text-sm font-semibold">Practice more</span>
               </div>
             ))}
           </div>
@@ -163,14 +357,14 @@ export default function Dashboard() {
       {/* Recent Activity and Progress */}
       <div className="grid grid-cols-1 gap-6">
         {/* Activity Feed */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+        <div className="bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-700">
+          <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
             <Activity className="text-blue-500 mr-2" size={20} />
             Recent Activity
             <span className="ml-2 text-xs text-gray-500">(Auto-syncs from extension)</span>
           </h3>
           {activities.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-gray-400">
               <p>No activity yet. Solve problems using the extension to see activity here!</p>
             </div>
           ) : (
@@ -208,9 +402,9 @@ function ActivityItem({ activity }) {
             Solved <span className="font-semibold">{activity.problemId}</span>
             {activity.difficulty && (
               <span className={`ml-2 px-2 py-0.5 text-xs rounded ${
-                activity.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
-                activity.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                'bg-red-100 text-red-700'
+                activity.difficulty === 'easy' ? 'bg-green-500/20 text-green-400' :
+                activity.difficulty === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                'bg-red-500/20 text-red-400'
               }`}>
                 {activity.difficulty}
               </span>
@@ -229,10 +423,10 @@ function ActivityItem({ activity }) {
   }
 
   return (
-    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+    <div className="flex items-start gap-3 p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors border border-gray-600">
       <div className="mt-0.5">{getActivityIcon(activity.type)}</div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-gray-900">
+        <p className="text-sm text-gray-200">
           {getActivityText(activity)}
         </p>
         <p className="text-xs text-gray-500 mt-1">
@@ -246,29 +440,31 @@ function ActivityItem({ activity }) {
 
 function ProgressMetric({ label, value, icon }) {
   return (
-    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+    <div className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg border border-gray-600">
       <div className="flex items-center gap-2">
         {icon}
-        <span className="text-sm font-medium text-gray-700">{label}</span>
+        <span className="text-sm font-medium text-gray-300">{label}</span>
       </div>
-      <span className="text-lg font-bold text-gray-900">{value}</span>
+      <span className="text-lg font-bold text-white">{value}</span>
     </div>
   )
 }
 
 function StatCard({ icon, label, value, trend, trendUp }) {
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+    <div className="bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-700">
       <div className="flex items-center justify-between mb-3">
         <div>{icon}</div>
         {trend && (
-          <span className={`text-xs font-medium ${trendUp ? 'text-green-600' : 'text-red-600'}`}>
+          <span className={`text-xs font-medium ${
+            trendUp ? 'text-green-400' : 'text-red-400'
+          }`}>
             {trendUp ? '↑' : '↓'} {trend}
           </span>
         )}
       </div>
-      <div className="text-2xl font-bold text-gray-900">{value}</div>
-      <div className="text-sm text-gray-600 mt-1">{label}</div>
+      <div className="text-2xl font-bold text-white">{value}</div>
+      <div className="text-sm text-gray-400 mt-1">{label}</div>
     </div>
   )
 }

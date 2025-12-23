@@ -47,11 +47,26 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   }
 });
 
-// Listen for storage changes to reload API key
+// Listen for storage changes to reload API key and user auth
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes.gemini_api_key) {
-    console.log('🔄 API key changed, reloading...');
-    geminiService.init();
+  if (area === 'local') {
+    if (changes.gemini_api_key) {
+      console.log('🔄 API key changed, reloading...');
+      geminiService.init();
+    }
+    
+    // CRITICAL: Update firebaseService userId when user signs in/out
+    if (changes.user_id) {
+      const newUserId = changes.user_id.newValue;
+      console.log('🔄 User authentication changed:', newUserId ? `User: ${newUserId}` : 'Signed out');
+      firebaseService.userId = newUserId || null;
+      
+      if (newUserId) {
+        console.log('✅ Firebase service now has userId:', newUserId);
+      } else {
+        console.log('⚠️ Firebase service userId cleared (user signed out)');
+      }
+    }
   }
 });
 
@@ -120,6 +135,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case 'PROBLEM_SOLVED':
           return await handleProblemSolved(message.data, sender);
         
+        case 'MODE_CHANGED':
+          return await handleModeChange(message.data, sender);
+        
         case 'START_INTERVIEW':
           return await handleInterviewStart(message.data, sender);
         
@@ -162,6 +180,165 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   return true; // Keep channel open for async response
 });
+
+/**
+ * Handle mode change (practice <-> interview)
+ */
+async function handleModeChange(data, sender) {
+  const { mode, currentCode } = data;
+  const session = await sessionManager.getCurrentSession(sender.tab.id);
+  
+  session.mode = mode;
+  
+  if (mode === 'interview') {
+    console.log('🎤 Starting interview mode');
+    console.log('📋 Current session state:', {
+      hasProblem: !!session.currentProblem,
+      problemTitle: session.currentProblem?.title,
+      tabId: sender.tab.id
+    });
+    
+    // Check if problem has been extracted
+    if (!session.currentProblem) {
+      console.error('❌ Cannot start interview: No problem extracted yet');
+      return {
+        success: false,
+        error: 'Please extract the problem first before starting interview mode'
+      };
+    }
+    
+    // Start interview mode - initialize everything
+    session.interviewState.active = true;
+    session.interviewState.questionsAsked = 0;
+    session.interviewState.scores = [];
+    session.interviewState.questionContext = [];
+    session.interviewState.startTime = Date.now();
+    session.interviewState.awaitingAnswer = false;
+    
+    console.log('📊 Interview state initialized:', session.interviewState);
+    console.log('📚 Problem details for interview questions:');
+    console.log('  • Title:', session.currentProblem.title);
+    console.log('  • Difficulty:', session.currentProblem.difficulty);
+    console.log('  • Topics:', session.currentProblem.analysis?.topics);
+    
+    // Generate first question immediately with full problem context
+    const firstQuestion = await geminiService.generateInterviewQuestion({
+      problem: session.currentProblem,
+      questionNumber: 1,
+      currentCode: currentCode || '',
+      timeElapsed: 0,
+      previousQuestions: []
+    });
+    
+    console.log('❓ First question generated:', firstQuestion);
+    
+    session.interviewState.questionsAsked = 1;
+    session.interviewState.currentQuestion = firstQuestion;
+    session.interviewState.awaitingAnswer = true;
+    session.interviewState.lastQuestionTime = Date.now();
+    session.interviewState.questionContext.push(firstQuestion);
+    
+    // Schedule next 3 questions at 10-minute intervals
+    scheduleInterviewQuestions(sender.tab.id);
+    
+    await sessionManager.saveSession(sender.tab.id, session);
+    
+    console.log('✅ Interview mode started, waiting for first answer');
+    
+    return {
+      success: true,
+      mode: 'interview',
+      firstQuestion: firstQuestion
+    };
+  } else {
+    // Switch to practice mode - clear interview state
+    if (session.interviewState.active) {
+      // Clear any scheduled questions
+      clearInterviewQuestions(sender.tab.id);
+    }
+    
+    session.interviewState.active = false;
+    await sessionManager.saveSession(sender.tab.id, session);
+    
+    return {
+      success: true,
+      mode: 'practice'
+    };
+  }
+}
+
+/**
+ * Schedule automated interview questions
+ */
+function scheduleInterviewQuestions(tabId) {
+  const intervals = [10, 20, 30]; // minutes: 10, 20, 30
+  
+  intervals.forEach((minutes, index) => {
+    const questionNumber = index + 2; // Questions 2, 3, 4
+    const delay = minutes * 60 * 1000; // Convert to milliseconds
+    
+    const timer = setTimeout(async () => {
+      try {
+        const session = await sessionManager.getCurrentSession(tabId);
+        
+        // Check if still in interview mode
+        if (!session.interviewState.active) return;
+        
+        // Get current code from content script
+        chrome.tabs.sendMessage(tabId, { type: 'GET_CURRENT_CODE' }, async (response) => {
+          if (chrome.runtime.lastError) return;
+          
+          const currentCode = response?.code || '';
+          const timeElapsed = Math.floor((Date.now() - session.interviewState.startTime) / 60000);
+          
+          // Generate next question
+          const question = await geminiService.generateInterviewQuestion({
+            problem: session.currentProblem,
+            questionNumber: questionNumber,
+            currentCode: currentCode,
+            timeElapsed: timeElapsed,
+            previousQuestions: session.interviewState.questionContext
+          });
+          
+          session.interviewState.questionsAsked = questionNumber;
+          session.interviewState.currentQuestion = question;
+          session.interviewState.awaitingAnswer = true;
+          session.interviewState.lastQuestionTime = Date.now();
+          session.interviewState.questionContext.push(question);
+          
+          await sessionManager.saveSession(tabId, session);
+          
+          // Send question to content script to display
+          chrome.tabs.sendMessage(tabId, {
+            type: 'INTERVIEW_QUESTION',
+            question: question,
+            questionNumber: questionNumber
+          });
+        });
+      } catch (error) {
+        console.error('Error in scheduled question:', error);
+      }
+    }, delay);
+    
+    // Store timer reference
+    chrome.storage.local.get([`interview_timers_${tabId}`], (result) => {
+      const timers = result[`interview_timers_${tabId}`] || [];
+      timers.push(timer);
+      chrome.storage.local.set({ [`interview_timers_${tabId}`]: timers });
+    });
+  });
+}
+
+/**
+ * Clear interview question timers
+ */
+function clearInterviewQuestions(tabId) {
+  chrome.storage.local.get([`interview_timers_${tabId}`], (result) => {
+    const timers = result[`interview_timers_${tabId}`] || [];
+    timers.forEach(timer => clearTimeout(timer));
+    chrome.storage.local.remove(`interview_timers_${tabId}`);
+  });
+}
 
 /**
  * Extract and analyze problem from content script
@@ -221,12 +398,134 @@ async function handleHintRequest(data, sender) {
   
   // Check if problem is loaded
   if (!session.currentProblem || !session.currentProblem.title || session.currentProblem.title === 'Unknown Problem') {
+    console.error('❌ Problem not detected in session');
+    console.log('📊 Current session state:', {
+      hasProblem: !!session.currentProblem,
+      problemTitle: session.currentProblem?.title,
+      sessionId: session.id,
+      tabId: sender.tab.id
+    });
+    
     return {
       success: false,
-      error: 'Problem not detected. Please refresh the page and wait a few seconds.'
+      error: 'Problem not detected. Please click "Extract Problem" button first, or refresh the page if you just loaded it.',
+      hint: {
+        question: 'Please extract the problem first by clicking the "Extract Problem" button in the Cognify panel.',
+        type: 'system'
+      }
     };
   }
   
+  // INTERVIEW MODE HANDLING
+  if (mode === 'interview' && session.interviewState.active) {
+    // Check if this is a response to an interview question
+    if (session.interviewState.awaitingAnswer) {
+      console.log('\n┌──────────────────────────────────────────────────────────────────┐');
+      console.log('│  🎤 INTERVIEW MODE: Scoring Answer to Question #' + session.interviewState.questionsAsked + '     │');
+      console.log('└──────────────────────────────────────────────────────────────────┘');
+      console.log('📌 Interview State Check:');
+      console.log('  • awaitingAnswer:', session.interviewState.awaitingAnswer);
+      console.log('  • currentQuestion:', session.interviewState.currentQuestion);
+      console.log('  • userAnswer:', userQuestion);
+      console.log('  • userCode:', userCode ? userCode.substring(0, 100) + '...' : 'No code');
+      
+      console.log('\n🚀 Calling AI to score answer...');
+      
+      // User is answering the interview question - score it
+      const score = await geminiService.scoreInterviewAnswer({
+        question: session.interviewState.currentQuestion,
+        answer: userQuestion,
+        code: userCode
+      });
+      
+      console.log('\n✅ AI RESPONSE RECEIVED!');
+      console.log('📦 Score object:', JSON.stringify(score, null, 2));
+      
+      console.log('\n✅ ANSWER SUCCESSFULLY SCORED!');
+      console.log('📋 Score Entry Details:');
+      
+      // Store the score (not displayed in chat)
+      const scoreEntry = {
+        questionNumber: session.interviewState.questionsAsked,
+        question: session.interviewState.currentQuestion,
+        answer: userQuestion,
+        scores: score,
+        timestamp: Date.now()
+      };
+      
+      console.log('  • Question Number:', scoreEntry.questionNumber);
+      console.log('  • Question:', scoreEntry.question);
+      console.log('  • User Answer:', scoreEntry.answer.substring(0, 100) + (scoreEntry.answer.length > 100 ? '...' : ''));
+      console.log('  • Scores:', JSON.stringify(scoreEntry.scores, null, 2));
+      console.log('  • Timestamp:', new Date(scoreEntry.timestamp).toLocaleString());
+      
+      session.interviewState.scores.push(scoreEntry);
+      session.interviewState.awaitingAnswer = false;
+      
+      console.log('\n💾 SCORES STORAGE UPDATE:');
+      console.log('  ✓ Total answers scored so far:', session.interviewState.scores.length);
+      console.log('  ✓ Total questions asked:', session.interviewState.questionsAsked);
+      
+      console.log('\n📊 ALL INTERVIEW SCORES SO FAR:');
+      console.log('┌────────────────────────────────────────────────────────────────┐');
+      session.interviewState.scores.forEach((s, idx) => {
+        console.log(`│ Question ${idx + 1}:`, s.question.substring(0, 40) + '...');
+        console.log('│   Communication:', s.scores.communication + '/10 |', 
+                    'Correctness:', s.scores.correctness + '/10 |',
+                    'Depth:', s.scores.depth + '/10');
+        console.log('│   Feedback:', s.scores.brief_feedback.substring(0, 50) + '...');
+        if (idx < session.interviewState.scores.length - 1) {
+          console.log('├────────────────────────────────────────────────────────────────┤');
+        }
+      });
+      console.log('└────────────────────────────────────────────────────────────────┘\n');
+      
+      await sessionManager.saveSession(sender.tab.id, session);
+      
+      // Return empty response (no message shown)
+      return {
+        success: true,
+        hint: {
+          question: '', // Empty - don't show in chat
+          metadata: { scoredAnswer: true }
+        },
+        mode: 'interview'
+      };
+    } else {
+      // User is chatting (not answering a question) - respond as interviewer
+      console.log('\n💬 INTERVIEW CONVERSATION MODE');
+      console.log('📌 Interview State:');
+      console.log('  • awaitingAnswer:', session.interviewState.awaitingAnswer);
+      console.log('  • questionsAsked:', session.interviewState.questionsAsked);
+      console.log('  • userMessage:', userQuestion);
+      
+      console.log('\n🚀 Calling AI for conversational response...');
+      
+      const response = await geminiService.handleInterviewConversation({
+        problem: session.currentProblem,
+        questionsAsked: session.interviewState.questionsAsked,
+        userMessage: userQuestion,
+        currentCode: userCode
+      });
+      
+      console.log('\n✅ AI RESPONSE RECEIVED!');
+      console.log('💬 AI Says:', response);
+      console.log('📏 Response length:', response?.length || 0, 'characters');
+      
+      await sessionManager.saveSession(sender.tab.id, session);
+      
+      return {
+        success: true,
+        hint: {
+          question: response,
+          metadata: { interviewConversation: true }
+        },
+        mode: 'interview'
+      };
+    }
+  }
+  
+  // PRACTICE MODE (existing logic)
   // Track hint requests (for spaced learning)
   session.hints = session.hints || [];
   session.hints.push({
@@ -458,33 +757,299 @@ async function handleConceptExplanation(data, sender) {
  * Handle problem solved event - sync to Firebase
  */
 async function handleProblemSolved(data, sender) {
-  const { problemData, sessionData } = data;
-  const session = await sessionManager.getCurrentSession(sender.tab.id);
-  const mode = await getMode();
+  try {
+    const { problemData, sessionData } = data;
+    const session = await sessionManager.getCurrentSession(sender.tab.id);
+    const mode = await getMode();
+    
+    console.log('🎯 Problem solved!', problemData);
+    console.log('📋 Mode:', mode);
+    console.log('📋 Session interview state:', session.interviewState);
+    
+    // Prepare problem data with session stats
+    const fullProblemData = {
+      ...problemData,
+      mode,
+      timeSpent: sessionData?.timeSpent || 0,
+      hintsUsed: session.hints?.length || 0,
+      codeAnalyses: session.codeIterations?.length || 0,
+      attempts: sessionData?.attempts || 1,
+      platform: problemData.platform || 'leetcode',
+      tags: session.currentProblem?.tags || problemData.tags || []
+    };
+    
+    // If interview mode, calculate and save final scores
+    if (mode === 'interview' && session.interviewState.active) {
+      console.log('\n┌──────────────────────────────────────────────────────────────────┐');
+      console.log('│  🎯 MARK AS SOLVED BUTTON CLICKED - Interview Completion       │');
+      console.log('│  Calculating and displaying final scores...                    │');
+      console.log('└──────────────────────────────────────────────────────────────────┘');
+      
+      // Clear any remaining timers
+      clearInterviewQuestions(sender.tab.id);
+      
+      // Calculate final scores
+      const finalScores = calculateInterviewScores(session.interviewState);
+      
+      console.log('📊 Calculating interview scores:', {
+        questionsAsked: session.interviewState.questionsAsked,
+        scoresCount: session.interviewState.scores.length,
+        scores: session.interviewState.scores,
+        finalScores: finalScores
+      });
+      
+      // Save interview report to Firebase
+      const interviewReport = {
+        problemId: problemData.problemId || problemData.title,
+        problemTitle: problemData.title,
+        platform: problemData.platform || 'leetcode',
+        difficulty: problemData.difficulty,
+        tags: session.currentProblem?.tags || problemData.tags || [],
+        hintsUsed: session.hints?.length || 0,
+        timestamp: Date.now(),
+        duration: Date.now() - session.interviewState.startTime, // milliseconds
+        questionsAsked: session.interviewState.questionsAsked,
+        questionScores: session.interviewState.scores,
+        finalScores: finalScores,
+        strengths: finalScores.strengths || [],
+        areasToImprove: finalScores.improvements || [],
+        feedback: `Interview completed with ${session.interviewState.questionsAsked} questions. Overall performance: ${finalScores.overall}/10`,
+        // Add scores object for dashboard compatibility
+        scores: {
+          communication: finalScores.communication,
+          technical: finalScores.technical,
+          overall: finalScores.overall
+        },
+        overallScore: finalScores.overall
+      };
+      
+      console.log('💾 Saving interview report to Firebase...');
+      console.log('📦 Report data:', JSON.stringify(interviewReport, null, 2));
+      
+      const saveResult = await firebaseService.saveInterviewReport(interviewReport);
+      
+      console.log('📤 Firebase save result:', saveResult);
+      
+      if (saveResult.success) {
+        console.log('✅✅✅ Interview report saved successfully:', saveResult.interviewId);
+        
+        // Update analytics with new interview data
+        console.log('📊 Updating analytics...');
+        await updateUserAnalytics(session, interviewReport, finalScores);
+      } else {
+        console.error('❌❌❌ Failed to save interview report:', saveResult.error);
+      }
+      
+      // Mark interview as inactive
+      session.interviewState.active = false;
+      await sessionManager.saveSession(sender.tab.id, session);
+      
+      console.log('📊 Interview scores calculated and saved:', finalScores);
+      
+      // Return scores to be displayed in UI
+      return {
+        success: true,
+        interviewComplete: true,
+        scores: finalScores,
+        message: 'Interview completed! Scores saved to dashboard.',
+        reportId: saveResult.interviewId
+      };
+    }
+    
+    // Log to Firebase (for both practice and interview modes)
+    console.log('💾 Logging problem to Firebase...');
+    await firebaseService.logProblemSolved(fullProblemData);
+    
+    // Update analytics for practice mode too
+    if (mode === 'practice') {
+      const practiceAnalytics = await calculateTagPerformance(session, {
+        tags: fullProblemData.tags,
+        hintsUsed: fullProblemData.hintsUsed
+      });
+      
+      await firebaseService.updateAnalytics({
+        practiceCompleted: true,
+        interviewCompleted: false,
+        strengths: practiceAnalytics.strengths,
+        weaknesses: practiceAnalytics.weaknesses
+      });
+    }
+    
+    // Clear session
+    await sessionManager.clearSession(sender.tab.id);
+    
+    console.log('✅ Problem logged successfully');
+    
+    return {
+      success: true,
+      message: mode === 'interview' ? 'Interview completed! Scores saved to dashboard.' : 'Problem logged to dashboard!'
+    };
+  } catch (error) {
+    console.error('❌❌❌ CRITICAL ERROR in handleProblemSolved:', error);
+    console.error('❌ Error stack:', error.stack);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Calculate final interview scores from all question scores
+ */
+function calculateInterviewScores(interviewState) {
+  const scores = interviewState.scores;
   
-  console.log('🎯 Problem solved!', problemData);
+  if (!scores || scores.length === 0) {
+    return {
+      communication: 0,
+      technical: 0,
+      overall: 0,
+      strengths: [],
+      improvements: ['Complete more questions for detailed feedback']
+    };
+  }
   
-  // Prepare problem data with session stats
-  const fullProblemData = {
-    ...problemData,
-    mode,
-    timeSpent: sessionData?.timeSpent || 0,
-    hintsUsed: session.hints?.length || 0,
-    codeAnalyses: session.codeIterations?.length || 0,
-    attempts: sessionData?.attempts || 1,
-    platform: problemData.platform || 'leetcode'
-  };
+  // Average all scores
+  const avgCommunication = scores.reduce((sum, s) => sum + (s.scores.communication || 0), 0) / scores.length;
+  const avgCorrectness = scores.reduce((sum, s) => sum + (s.scores.correctness || 0), 0) / scores.length;
+  const avgDepth = scores.reduce((sum, s) => sum + (s.scores.depth || 0), 0) / scores.length;
   
-  // Log to Firebase
-  await firebaseService.logProblemSolved(fullProblemData);
+  // Technical score = average of correctness and depth
+  const technical = Math.round((avgCorrectness + avgDepth) / 2);
   
-  // Clear session
-  await sessionManager.clearSession(sender.tab.id);
+  // Overall score = weighted average
+  const overall = Math.round((avgCommunication * 0.3 + avgCorrectness * 0.4 + avgDepth * 0.3));
+  
+  // Determine strengths and improvements
+  const strengths = [];
+  const improvements = [];
+  
+  if (avgCommunication >= 7) strengths.push('Clear communication');
+  else if (avgCommunication < 5) improvements.push('Improve explanation clarity');
+  
+  if (avgCorrectness >= 7) strengths.push('Accurate answers');
+  else if (avgCorrectness < 5) improvements.push('Focus on answer accuracy');
+  
+  if (avgDepth >= 7) strengths.push('Deep technical understanding');
+  else if (avgDepth < 5) improvements.push('Develop deeper technical knowledge');
   
   return {
-    success: true,
-    message: 'Problem logged to dashboard!'
+    communication: Math.round(avgCommunication),
+    technical: technical,
+    overall: overall,
+    strengths: strengths,
+    improvements: improvements,
+    totalQuestions: scores.length
   };
+}
+
+/**
+ * Update user analytics based on completed interview/practice
+ */
+async function updateUserAnalytics(session, report, scores) {
+  try {
+    console.log('📊 Calculating user analytics...');
+    
+    // Get all interview reports to calculate averages
+    const userId = await chrome.storage.local.get(['user_id']);
+    if (!userId.user_id) {
+      console.warn('⚠️ No user ID, skipping analytics update');
+      return;
+    }
+    
+    // Calculate tag-based strengths and weaknesses
+    const tagPerformance = await calculateTagPerformance(session, report);
+    
+    const analyticsData = {
+      interviewCompleted: session.interviewState.active,
+      practiceCompleted: !session.interviewState.active,
+      avgCommunicationScore: scores.communication,
+      avgTechnicalScore: scores.technical,
+      avgOverallScore: scores.overall,
+      strengths: tagPerformance.strengths,
+      weaknesses: tagPerformance.weaknesses
+    };
+    
+    await firebaseService.updateAnalytics(analyticsData);
+    console.log('✅ Analytics updated successfully');
+  } catch (error) {
+    console.error('❌ Failed to update analytics:', error);
+  }
+}
+
+/**
+ * Calculate strengths and weaknesses based on problem tags and hint usage
+ * Strengths: tags where hints < 2, Weaknesses: tags where hints >= 3
+ * Zero intersection - tags can't be in both
+ */
+async function calculateTagPerformance(session, report) {
+  try {
+    const tags = report.tags || [];
+    const hintsUsed = report.hintsUsed || 0;
+    
+    console.log('🎯 Calculating tag performance:');
+    console.log('  Tags:', tags);
+    console.log('  Hints used:', hintsUsed);
+    
+    // Get historical performance from Firebase
+    const userId = await chrome.storage.local.get(['user_id']);
+    if (!userId.user_id) return { strengths: [], weaknesses: [] };
+    
+    // Fetch all solved problems to analyze tag performance
+    const activities = await firebaseService.readFromFirestore(`users/${userId.user_id}/activities`);
+    
+    // Track hints per tag
+    const tagStats = {};
+    
+    // Add current problem
+    tags.forEach(tag => {
+      if (!tagStats[tag]) tagStats[tag] = { total: 0, totalHints: 0 };
+      tagStats[tag].total += 1;
+      tagStats[tag].totalHints += hintsUsed;
+    });
+    
+    // Add historical data
+    if (activities) {
+      Object.values(activities).forEach(activity => {
+        if (activity.type === 'problem_solved' && activity.tags) {
+          activity.tags.forEach(tag => {
+            if (!tagStats[tag]) tagStats[tag] = { total: 0, totalHints: 0 };
+            tagStats[tag].total += 1;
+            tagStats[tag].totalHints += (activity.hintsUsed || 0);
+          });
+        }
+      });
+    }
+    
+    // Calculate strengths and weaknesses
+    const strengths = [];
+    const weaknesses = [];
+    
+    Object.entries(tagStats).forEach(([tag, stats]) => {
+      const avgHints = stats.totalHints / stats.total;
+      
+      console.log(`  ${tag}: ${stats.total} problems, avg ${avgHints.toFixed(1)} hints`);
+      
+      // Strength: low hint usage (< 2 hints on average)
+      if (avgHints < 2) {
+        strengths.push(tag);
+      }
+      // Weakness: high hint usage (>= 3 hints on average)
+      else if (avgHints >= 3) {
+        weaknesses.push(tag);
+      }
+      // Medium performance (2-3 hints): not counted as either
+    });
+    
+    console.log('🎯 Strengths:', strengths);
+    console.log('⚠️ Weaknesses:', weaknesses);
+    
+    return { strengths, weaknesses };
+  } catch (error) {
+    console.error('❌ Error calculating tag performance:', error);
+    return { strengths: [], weaknesses: [] };
+  }
 }
 
 /**

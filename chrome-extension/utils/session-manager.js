@@ -12,9 +12,23 @@ export class SessionManager {
    * Get or create session for a tab
    */
   async getCurrentSession(tabId) {
+    // First check in-memory cache
     if (!this.sessions.has(tabId)) {
+      // Try to recover from storage first
+      console.log('🔄 Session not in memory, attempting recovery for tab:', tabId);
+      const recovered = await this.recoverSession(tabId);
+      
+      if (recovered) {
+        console.log('✅ Session recovered from storage:', recovered.id);
+        console.log('📊 Recovered problem:', recovered.currentProblem?.title || 'None');
+        return recovered;
+      }
+      
+      // No stored session, create new one
+      console.log('🆕 Creating new session for tab:', tabId);
       this.sessions.set(tabId, this.createNewSession());
     }
+    
     return this.sessions.get(tabId);
   }
 
@@ -30,7 +44,16 @@ export class SessionManager {
       codeIterations: [],
       interview: null,
       mode: 'practice',
-      metadata: {}
+      metadata: {},
+      interviewState: {
+        active: false,
+        questionsAsked: 0,
+        questionTimers: [],
+        scores: [],
+        lastQuestionTime: null,
+        awaitingAnswer: false,
+        questionContext: []
+      }
     };
   }
 
@@ -41,12 +64,17 @@ export class SessionManager {
     this.sessions.set(tabId, sessionData);
     
     // Persist to storage for recovery
+    const storageKey = `session_${tabId}`;
+    const storageData = {
+      ...sessionData,
+      lastUpdated: Date.now()
+    };
+    
     await chrome.storage.local.set({
-      [`session_${tabId}`]: {
-        ...sessionData,
-        lastUpdated: Date.now()
-      }
+      [storageKey]: storageData
     });
+    
+    console.log('💾 Session saved for tab:', tabId, '- Problem:', sessionData.currentProblem?.title || 'None');
   }
 
   /**

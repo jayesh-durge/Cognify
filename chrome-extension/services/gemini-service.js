@@ -61,6 +61,189 @@ export class GeminiService {
   }
 
   /**
+   * Generate automated interview question
+   */
+  async generateInterviewQuestion(params) {
+    const { problem, questionNumber, currentCode, timeElapsed, previousQuestions } = params;
+
+    const prompt = GEMINI_PROMPTS.interviewAutoQuestion
+      .replace('{{problem_title}}', problem?.title || 'Unknown')
+      .replace('{{problem_difficulty}}', problem?.difficulty || 'Medium')
+      .replace('{{problem_description}}', (problem?.description || 'No description').substring(0, 800))
+      .replace('{{problem_constraints}}', (problem?.constraints || 'No constraints').substring(0, 300))
+      .replace('{{problem_topics}}', (problem?.analysis?.topics || ['DSA']).join(', '))
+      .replace('{{question_number}}', questionNumber)
+      .replace('{{current_code}}', currentCode?.substring(0, 500) || 'No code yet')
+      .replace('{{time_elapsed}}', timeElapsed)
+      .replace('{{previous_questions}}', previousQuestions.join('; ') || 'None');
+
+    try {
+      const response = await this.callGemini(prompt + '\n\nIMPORTANT: Keep your question concise (1-2 sentences max).', {
+        temperature: 0.7,
+        maxTokens: 150
+      });
+
+      return response.text;
+    } catch (error) {
+      console.error('Error generating interview question:', error);
+      return this.getFallbackInterviewQuestion(questionNumber);
+    }
+  }
+
+  /**
+   * Score user's answer to interview question
+   */
+  async scoreInterviewAnswer(params) {
+    const { question, answer, code } = params;
+
+    console.log('\n=================================================================');
+    console.log('  🤖 AI INTERVIEW SCORING SESSION');
+    console.log('=================================================================\n');
+    
+    console.log('📝 INPUT RECEIVED:');
+    console.log('  Question: ' + question);
+    console.log('  Answer: ' + answer);
+    console.log('  Code: ' + (code ? code.substring(0, 100) + '...' : 'No code'));
+    console.log('\n-----------------------------------------------------------------');
+
+    const prompt = GEMINI_PROMPTS.scoreInterviewAnswer
+      .replace('{{question}}', question)
+      .replace('{{answer}}', answer)
+      .replace('{{code}}', code?.substring(0, 500) || 'No code');
+
+    console.log('🚀 Sending request to Gemini AI...');
+    console.log('⏱️ Timestamp:', new Date().toLocaleTimeString());
+
+    try {
+      const response = await this.callGemini(prompt + '\n\nIMPORTANT: Keep brief_feedback to 1 sentence only.', {
+        temperature: 0.3,
+        maxTokens: 250
+      });
+
+      console.log('\n📥 RAW AI RESPONSE:');
+      console.log('-----------------------------------------------------------------');
+      console.log(response.text);
+      console.log('-----------------------------------------------------------------\n');
+
+      // Parse JSON from response - handle markdown blocks
+      let jsonString = response.text.trim();
+      const jsonMatch = jsonString.match(/```json\s*([\s\S]*?)```/);
+      
+      if (jsonMatch) {
+        jsonString = jsonMatch[1].trim();
+        console.log('✅ Extracted JSON from markdown block');
+      }
+      
+      const scores = JSON.parse(jsonString);
+      console.log('✅ Successfully parsed JSON');
+
+      console.log('\n=================================================================');
+      console.log('  ⭐ AI GENERATED EVALUATION SCORES');
+      console.log('=================================================================\n');
+      
+      const commScore = scores.communication || 0;
+      const corrScore = scores.correctness || 0;
+      const depthScore = scores.depth || 0;
+      const avgScore = ((commScore + corrScore + depthScore) / 3).toFixed(1);
+      
+      console.log('  📊 COMMUNICATION SKILLS: ' + commScore + '/10');
+      console.log('     ' + '█'.repeat(commScore) + '░'.repeat(10 - commScore));
+      console.log('     How clearly and effectively the answer is communicated\n');
+      
+      console.log('  ✓  CORRECTNESS: ' + corrScore + '/10');
+      console.log('     ' + '█'.repeat(corrScore) + '░'.repeat(10 - corrScore));
+      console.log('     Accuracy and validity of the technical content\n');
+      
+      console.log('  🎯 DEPTH OF UNDERSTANDING: ' + depthScore + '/10');
+      console.log('     ' + '█'.repeat(depthScore) + '░'.repeat(10 - depthScore));
+      console.log('     Demonstrates thorough grasp of concepts\n');
+      
+      console.log('  🏆 AVERAGE SCORE: ' + avgScore + '/10');
+      console.log('     Overall performance rating\n');
+      
+      console.log('-----------------------------------------------------------------');
+      console.log('💬 AI FEEDBACK:');
+      console.log('   ' + (scores.brief_feedback || 'No feedback provided'));
+      console.log('-----------------------------------------------------------------\n');
+      
+      console.log('📦 COMPLETE SCORE OBJECT:');
+      console.log(JSON.stringify(scores, null, 2));
+      console.log('\n=================================================================\n');
+      
+      return scores;
+    } catch (error) {
+      console.error('❌ Error scoring answer:', error);
+      const fallbackScores = {
+        communication: 5,
+        correctness: 5,
+        depth: 5,
+        brief_feedback: 'Unable to evaluate - using default scores'
+      };
+      console.log('⚠️ Using fallback scores:', fallbackScores);
+      return fallbackScores;
+    }
+  }
+
+  /**
+   * Handle interview mode conversation (not answering a question)
+   */
+  async handleInterviewConversation(params) {
+    console.log('🎯 handleInterviewConversation called');
+    console.log('📥 Parameters received:', {
+      problemTitle: params.problem?.title,
+      questionsAsked: params.questionsAsked,
+      userMessage: params.userMessage,
+      hasCode: !!params.currentCode
+    });
+    
+    const { problem, questionsAsked, userMessage, currentCode } = params;
+
+    const prompt = GEMINI_PROMPTS.interviewConversation
+      .replace('{{problem_title}}', problem?.title || 'Unknown')
+      .replace('{{questions_asked}}', questionsAsked)
+      .replace('{{user_message}}', userMessage)
+      .replace('{{current_code}}', currentCode?.substring(0, 500) || 'No code yet');
+
+    console.log('📝 Prompt prepared (first 200 chars):', prompt.substring(0, 200));
+    console.log('🚀 Calling Gemini API...');
+
+    try {
+      const response = await this.callGemini(prompt + '\n\nIMPORTANT: Be concise and direct. Maximum 2-3 sentences.', {
+        temperature: 0.8,
+        maxTokens: 200
+      });
+
+      console.log('✅ Gemini API response received');
+      console.log('📤 Response:', response.text);
+      console.log('📏 Response length:', response.text?.length || 0);
+
+      return response.text;
+    } catch (error) {
+      console.error('❌ Error in interview conversation:', error);
+      console.error('📋 Error details:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack
+      });
+      console.error('🔍 Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+      return "I see. Can you explain your thought process further?";
+    }
+  }
+
+  /**
+   * Fallback interview questions
+   */
+  getFallbackInterviewQuestion(questionNumber) {
+    const questions = [
+      "How would you approach solving this problem? What's your initial thought?",
+      "Can you walk me through your current approach? What's the time complexity you're aiming for?",
+      "Have you considered any edge cases? How would you handle them?",
+      "How would you test your solution? Are there any trade-offs in your approach?"
+    ];
+    return questions[questionNumber - 1] || questions[0];
+  }
+
+  /**
    * Generate Socratic hints - ASK, don't TELL
    */
   async generateHint(params) {
@@ -156,9 +339,9 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
   }
 
   /**
-   * Generate interview questions based on progress
+   * Generate interview questions based on progress (Phase-based)
    */
-  async generateInterviewQuestion(params) {
+  async generatePhaseBasedInterviewQuestion(params) {
     const { problem, phase, context } = params;
 
     const promptTemplate = GEMINI_PROMPTS.interviewQuestions[phase];
@@ -467,7 +650,7 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
 class RateLimiter {
   constructor() {
     this.requests = [];
-    this.maxRequests = 60; // 60 requests
+    this.maxRequests = 15; // Conservative limit for free tier (Gemini allows 20/min)
     this.windowMs = 60000; // per minute
   }
 

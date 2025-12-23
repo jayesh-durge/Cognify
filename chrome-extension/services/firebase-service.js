@@ -141,63 +141,100 @@ export class FirebaseService {
   }
 
   /**
+   * Update user analytics - strengths, weaknesses, stats
+   */
+  async updateAnalytics(analyticsData) {
+    if (!this.userId) return { success: false, error: 'Not authenticated' };
+
+    try {
+      console.log('📊 Updating analytics:', analyticsData);
+      
+      // Get current analytics
+      const currentAnalytics = await this.readFromFirestore(`users/${this.userId}/analytics/summary`);
+      
+      const updated = {
+        userId: this.userId,
+        totalInterviews: (currentAnalytics?.totalInterviews || 0) + (analyticsData.interviewCompleted ? 1 : 0),
+        totalPractice: (currentAnalytics?.totalPractice || 0) + (analyticsData.practiceCompleted ? 1 : 0),
+        avgCommunicationScore: analyticsData.avgCommunicationScore || currentAnalytics?.avgCommunicationScore || 0,
+        avgTechnicalScore: analyticsData.avgTechnicalScore || currentAnalytics?.avgTechnicalScore || 0,
+        avgOverallScore: analyticsData.avgOverallScore || currentAnalytics?.avgOverallScore || 0,
+        strengths: analyticsData.strengths || currentAnalytics?.strengths || [],
+        weaknesses: analyticsData.weaknesses || currentAnalytics?.weaknesses || [],
+        lastUpdated: Date.now()
+      };
+
+      await this.writeToFirestore(`users/${this.userId}/analytics/summary`, updated);
+      console.log('✅ Analytics updated successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Failed to update analytics:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Save interview report to Firestore
    */
   async saveInterviewReport(report) {
+    console.log('🎯 saveInterviewReport called');
+    console.log('🔐 Current userId:', this.userId);
+    console.log('📊 Report received:', JSON.stringify(report, null, 2));
+    
     if (!this.userId) {
-      console.warn('⚠️ User not authenticated, cannot save interview');
-      return;
+      console.error('❌ CRITICAL: User not authenticated, cannot save interview');
+      console.error('💡 Make sure user is signed in on dashboard (localhost:3000)');
+      console.error('💡 Check chrome.storage.local for user_id');
+      return { success: false, error: 'User not authenticated' };
     }
 
     try {
       const interviewId = `interview_${Date.now()}`;
       
+      console.log('📝 Preparing interview data for:', interviewId);
+      console.log('✅ User authenticated:', this.userId);
+      
       // Comprehensive interview data structure
       const interviewData = {
         userId: this.userId,
         id: interviewId,
-        timestamp: Date.now(),
+        timestamp: report.timestamp || Date.now(),
         
         // Basic info
         problemId: report.problemId || 'unknown',
         problemTitle: report.problemTitle || report.problem?.title || 'Unknown Problem',
         platform: report.platform || 'leetcode',
         difficulty: report.difficulty || report.problem?.difficulty || 'medium',
+      tags: report.tags || report.problem?.tags || [],
+      hintsUsed: report.hintsUsed || 0,
         
-        // Interview status and scoring
-        status: report.status || 'completed', // completed, in-progress, abandoned
-        overallScore: report.overallScore || report.score || 0, // 0-100
-        duration: report.duration || 0, // seconds
-        
-        // Detailed scores
+        // Detailed scores from our new system - CRITICAL for dashboard
         scores: {
-          problemUnderstanding: report.scores?.problemUnderstanding || report.problemUnderstanding || 0,
-          algorithmDesign: report.scores?.algorithmDesign || report.algorithmDesign || 0,
-          codeQuality: report.scores?.codeQuality || report.codeQuality || 0,
-          communication: report.scores?.communication || report.communication || 0,
-          technicalSkill: report.scores?.technicalSkill || report.technicalSkill || 0,
-          edgeCaseHandling: report.scores?.edgeCaseHandling || report.edgeCaseHandling || 0,
-          timeManagement: report.scores?.timeManagement || report.timeManagement || 0
+          communication: report.scores?.communication || report.finalScores?.communication || 0,
+          technical: report.scores?.technical || report.finalScores?.technical || 0,
+          overall: report.scores?.overall || report.finalScores?.overall || 0
         },
         
-        // Topics and skills
-        topicsCovered: report.topicsCovered || report.topics || [],
-        skillsTested: report.skillsTested || [],
+        // Interview duration and questions
+        duration: report.duration || 0,
+        questionsAsked: report.questionsAsked || 0,
+        
+        // Question-level scores with full details
+        questionScores: report.questionScores || [],
         
         // Performance analysis
-        strengths: report.strengths || [],
-        weaknesses: report.weaknesses || [],
-        areasToImprove: report.areasToImprove || report.weaknesses || [],
+        strengths: report.strengths || report.finalScores?.strengths || [],
+        areasToImprove: report.areasToImprove || report.finalScores?.improvements || [],
         
         // Feedback and evaluation
-        feedback: report.feedback || '',
-        detailedFeedback: report.detailedFeedback || '',
-        interviewerNotes: report.interviewerNotes || '',
+        feedback: report.feedback || report.report?.feedback || 'Interview completed',
         
-        // Interview metrics
-        questionsAsked: report.questionsAsked || 0,
-        hintsGiven: report.hintsGiven || 0,
-        clarificationQuestions: report.clarificationQuestions || 0,
+        // Overall score for backward compatibility
+        overallScore: report.overallScore || report.scores?.overall || report.finalScores?.overall || 0,
+        
+        // Topics and skills
+        topicsCovered: report.topics || [],
+        skillsTested: [],
         
         // Code statistics
         codeIterations: report.codeIterations || 0,
@@ -214,7 +251,7 @@ export class FirebaseService {
         },
         
         // Additional metadata
-        mode: report.mode || 'mock_interview', // mock_interview, real_interview, practice
+        mode: report.mode || 'mock_interview',
         interviewer: report.interviewer || 'AI',
         company: report.company || null,
         position: report.position || null,
@@ -225,9 +262,22 @@ export class FirebaseService {
         optimalSolution: report.optimalSolution || false
       };
 
-      await this.writeToFirestore(`users/${this.userId}/interviews/${interviewId}`, interviewData);
+      console.log('💾 Writing interview to Firestore...');
+      console.log('📍 Path: users/' + this.userId + '/interviews/' + interviewId);
+      console.log('📦 Data structure:', {
+        hasScores: !!interviewData.scores,
+        scoresDetail: interviewData.scores,
+        hasQuestionScores: interviewData.questionScores?.length > 0,
+        questionScoresCount: interviewData.questionScores?.length
+      });
+
+      const writeResult = await this.writeToFirestore(`users/${this.userId}/interviews/${interviewId}`, interviewData);
+      
+      console.log('✅ Interview written to Firestore successfully!');
+      console.log('📄 Write result:', writeResult);
       
       // Log activity
+      console.log('📝 Logging activity...');
       await this.logActivity({
         type: 'interview_completed',
         interviewId,
@@ -235,14 +285,16 @@ export class FirebaseService {
         status: interviewData.status,
         problemTitle: interviewData.problemTitle,
         duration: interviewData.duration,
-        strengths: interviewData.strengths,
-        weaknesses: interviewData.weaknesses
+        questionsAsked: interviewData.questionsAsked,
+        platform: interviewData.platform
       });
       
-      console.log('✅ Interview report saved with comprehensive data');
+      console.log('✅✅✅ Interview report saved with comprehensive data - SUCCESS!');
       return { success: true, interviewId };
     } catch (error) {
-      console.error('❌ Failed to save interview:', error);
+      console.error('❌❌❌ CRITICAL ERROR saving interview:', error);
+      console.error('❌ Error stack:', error.stack);
+      console.error('❌ Error message:', error.message);
       return { success: false, error: error.message };
     }
   }
@@ -301,8 +353,11 @@ export class FirebaseService {
   async writeToFirestore(path, data) {
     const url = `https://firestore.googleapis.com/v1/projects/${this.firebaseConfig.projectId}/databases/(default)/documents/${path}`;
     
+    console.log('🌐 Firestore REST API URL:', url);
+    
     // Get auth token
     const authToken = await this.getAuthToken();
+    console.log('🔑 Auth token:', authToken ? `${authToken.substring(0, 20)}...` : 'NO TOKEN');
     
     // Convert data to Firestore format
     const firestoreData = this.toFirestoreFormat(data);
@@ -316,19 +371,27 @@ export class FirebaseService {
       headers['Authorization'] = `Bearer ${authToken}`;
     }
     
+    console.log('📤 Sending PATCH request to Firestore...');
+    
     const response = await fetch(url, {
       method: 'PATCH',
       headers,
       body: JSON.stringify({ fields: firestoreData })
     });
 
+    console.log('📥 Response status:', response.status, response.statusText);
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ Firestore write error:', errorText);
+      console.error('❌ Response status:', response.status);
+      console.error('❌ Response headers:', Object.fromEntries(response.headers.entries()));
       throw new Error(`Firestore write failed: ${response.statusText} - ${errorText}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+    console.log('✅ Firestore write successful!');
+    return result;
   }
 
   /**
@@ -365,9 +428,20 @@ export class FirebaseService {
       } else if (Array.isArray(value)) {
         result[key] = {
           arrayValue: {
-            values: value.map(v => 
-              typeof v === 'string' ? { stringValue: v } : { integerValue: v }
-            )
+            values: value.map(v => {
+              // Handle different types in arrays
+              if (typeof v === 'string') {
+                return { stringValue: v };
+              } else if (typeof v === 'number') {
+                return { integerValue: Math.floor(v) };
+              } else if (typeof v === 'boolean') {
+                return { booleanValue: v };
+              } else if (typeof v === 'object' && v !== null) {
+                // Recursively handle objects in arrays
+                return { mapValue: { fields: this.toFirestoreFormat(v) } };
+              }
+              return { stringValue: String(v) };
+            })
           }
         };
       } else if (typeof value === 'object') {
@@ -392,9 +466,14 @@ export class FirebaseService {
       } else if (value.booleanValue !== undefined) {
         result[key] = value.booleanValue;
       } else if (value.arrayValue) {
-        result[key] = value.arrayValue.values?.map(v => 
-          v.stringValue || v.integerValue
-        ) || [];
+        result[key] = value.arrayValue.values?.map(v => {
+          // Handle different types in array values
+          if (v.stringValue !== undefined) return v.stringValue;
+          if (v.integerValue !== undefined) return parseInt(v.integerValue);
+          if (v.booleanValue !== undefined) return v.booleanValue;
+          if (v.mapValue) return this.fromFirestoreFormat(v.mapValue.fields);
+          return null;
+        }).filter(v => v !== null) || [];
       } else if (value.mapValue) {
         result[key] = this.fromFirestoreFormat(value.mapValue.fields);
       }
