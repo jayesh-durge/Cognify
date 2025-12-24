@@ -642,6 +642,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 Built with ❤️ by passionate developers who understand the struggle of interview preparation.
 
 **Project Maintainer:** [Jayesh Durge](https://github.com/jayesh-durge)
+**Project Maintainer:** [Ayush Sonekar](https://github.com/57ayush76)
 
 ---
 
