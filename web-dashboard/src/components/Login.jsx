@@ -1,9 +1,11 @@
 import React from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { Chrome } from 'lucide-react'
+import { Chrome, Download, ArrowRight } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 export default function Login() {
   const { signIn } = useAuth()
+  const navigate = useNavigate()
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState(null)
 
@@ -19,14 +21,42 @@ export default function Login() {
     }
   }
 
+  const handleDownloadClick = () => {
+    navigate('/setup')
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-500 to-purple-500 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
+      <div className="max-w-4xl w-full">
         {/* Logo & Branding */}
         <div className="text-center mb-8">
           <div className="text-6xl mb-4">🧠</div>
           <h1 className="text-4xl font-bold text-white mb-2">Cognify</h1>
           <p className="text-white/90 text-lg">AI Interview Mentor Dashboard</p>
+        </div>
+
+        {/* Download Extension CTA - PROMINENT */}
+        <div className="bg-white rounded-2xl shadow-2xl p-8 mb-6 border-4 border-yellow-400">
+          <div className="text-center mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-500 to-purple-500 rounded-full mb-4">
+              <Download className="text-white" size={32} />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">🚀 First Time Here?</h2>
+            <p className="text-gray-600 text-lg mb-6">Download and install the Cognify Chrome Extension to get started!</p>
+          </div>
+          
+          <button
+            onClick={handleDownloadClick}
+            className="w-full bg-gradient-to-r from-primary-500 to-purple-500 text-white font-bold py-4 px-6 rounded-xl flex items-center justify-center space-x-3 hover:from-primary-600 hover:to-purple-600 transition-all duration-200 transform hover:scale-105 shadow-lg text-lg"
+          >
+            <Download size={24} />
+            <span>Download Extension & Setup Guide</span>
+            <ArrowRight size={24} />
+          </button>
+          
+          <p className="text-center text-sm text-gray-500 mt-4">
+            Takes less than 2 minutes to install • Works with LeetCode, Codeforces & more
+          </p>
         </div>
 
         {/* Login Card */}
@@ -72,7 +102,7 @@ export default function Login() {
             <div className="flex items-start space-x-2 text-sm text-gray-600">
               <Chrome size={20} className="text-primary-500 flex-shrink-0 mt-0.5" />
               <p>
-                Make sure you have the Cognify Chrome Extension installed to sync your practice data.
+                Already have the extension? Sign in to view your progress and insights.
               </p>
             </div>
           </div>

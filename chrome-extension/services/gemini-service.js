@@ -47,12 +47,22 @@ export class GeminiService {
         .replace('{{constraints}}', problemData.constraints || '')
         .replace('{{examples}}', JSON.stringify(problemData.examples || []));
 
-      const response = await this.callGemini(prompt + '\n\nBe concise and brief.', {
+      const response = await this.callGemini(prompt, {
         temperature: 0.3,
-        maxTokens: 400
+        maxTokens: 500,
+        responseFormat: 'json'
       });
 
-      return this.parseAnalysis(response);
+      const parsed = this.parseJSON(response.text, 'analyzeProblem');
+      return {
+        difficulty: parsed.difficulty || 'medium',
+        topics: parsed.topics || [],
+        patterns: parsed.patterns || [],
+        estimatedTime: parsed.estimatedTime || 30,
+        prerequisites: parsed.prerequisites || [],
+        summary: parsed.summary || 'Unable to analyze',
+        commonTraps: parsed.commonTraps || []
+      };
     } catch (error) {
       console.error('❌ Analysis failed:', error.message);
       
@@ -90,13 +100,18 @@ export class GeminiService {
       .replace('{{time_elapsed}}', timeElapsed)
       .replace('{{previous_questions}}', previousQuestions.join('; ') || 'None');
 
+    // Add JSON format instruction
+    const jsonPrompt = prompt + '\n\n⚠️ Return ONLY valid JSON: {"question": "<your interview question>"}';
+
     try {
-      const response = await this.callGemini(prompt + '\n\nGenerate one clear interview question.', {
+      const response = await this.callGemini(jsonPrompt, {
         temperature: 0.7,
-        maxTokens: 400
+        maxTokens: 400,
+        responseFormat: 'json'
       });
 
-      return response.text;
+      const parsed = this.parseJSON(response.text, 'generateInterviewQuestion');
+      return parsed.question || response.text;
     } catch (error) {
       console.error('Error generating interview question:', error);
       
@@ -134,9 +149,10 @@ export class GeminiService {
     console.log('⏱️ Timestamp:', new Date().toLocaleTimeString());
 
     try {
-      const response = await this.callGemini(prompt + '\n\nProvide JSON with scores and brief feedback.', {
+      const response = await this.callGemini(prompt, {
         temperature: 0.3,
-        maxTokens: 400
+        maxTokens: 400,
+        responseFormat: 'json'
       });
 
       console.log('\n📥 RAW AI RESPONSE:');
@@ -144,40 +160,8 @@ export class GeminiService {
       console.log(response.text);
       console.log('-----------------------------------------------------------------\n');
 
-      // Parse JSON from response - handle multiple markdown formats
-      let jsonString = response.text.trim();
-      
-      // Try extracting from ```json ... ``` blocks
-      let jsonMatch = jsonString.match(/```json\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        jsonString = jsonMatch[1].trim();
-        console.log('✅ Extracted JSON from ```json block');
-      } else {
-        // Try extracting from ``` ... ``` blocks without "json" tag
-        jsonMatch = jsonString.match(/```\s*([\s\S]*?)```/);
-        if (jsonMatch) {
-          jsonString = jsonMatch[1].trim();
-          console.log('✅ Extracted JSON from ``` block');
-        } else {
-          // Remove any leading/trailing backticks (like `{...}`)
-          jsonString = jsonString.replace(/^`+|`+$/g, '').trim();
-          console.log('✅ Cleaned JSON string');
-        }
-      }
-      
-      // Try to find JSON object if still not clean
-      if (!jsonString.startsWith('{')) {
-        const jsonObjMatch = jsonString.match(/\{[\s\S]*\}/);
-        if (jsonObjMatch) {
-          jsonString = jsonObjMatch[0];
-          console.log('✅ Extracted JSON object from text');
-        }
-      }
-      
-      console.log('📝 Final JSON string to parse:', jsonString.substring(0, 100) + '...');
-      
-      const scores = JSON.parse(jsonString);
-      console.log('✅ Successfully parsed JSON');
+      // Parse JSON from response
+      const scores = this.parseJSON(response.text, 'scoreInterviewAnswer');
       
       // Validate scores are in 0-100 range
       const validateScore = (score) => Math.min(100, Math.max(0, score || 50));
@@ -278,20 +262,26 @@ Examples:
 - "Noted. Feel free to continue with your solution."
 - "Understood. What edge cases are you considering?"
 
-Keep it VERY brief (1-2 sentences max). Be professional and natural.`;
+Keep it VERY brief (1-2 sentences max). Be professional and natural.
+
+⚠️ Return ONLY valid JSON: {"followUp": "<your 1-2 sentence response>"}`;
 
     try {
-      const response = await this.callGemini(followUpPrompt + '\n\nKeep response concise but complete (1-2 sentences).', {
+      const response = await this.callGemini(followUpPrompt, {
         temperature: 0.7,
-        maxTokens: 400
+        maxTokens: 400,
+        responseFormat: 'json'
       });
 
-      console.log('✅ Follow-up response generated:', response.text);
+      const parsed = this.parseJSON(response.text, 'scoreAndRespond');
+      const followUpMsg = parsed.followUp || response.text || "Noted. Feel free to continue.";
+      
+      console.log('✅ Follow-up response generated:', followUpMsg);
       console.log('=================================================================\n');
 
       return {
         scores: scores,
-        followUpMessage: response.text
+        followUpMessage: followUpMsg
       };
     } catch (error) {
       console.error('❌ Error generating follow-up:', error);
@@ -339,64 +329,19 @@ Keep it VERY brief (1-2 sentences max). Be professional and natural.`;
       .replace('{{current_code}}', currentCode?.substring(0, 500) || 'No code yet');
 
     console.log('🚀 Sending unified request to Gemini...');
-
-    let response = null; // Declare outside try block for catch access
     
     try {
-      response = await this.callGemini(prompt + '\n\nReturn ONLY the JSON with scores, response, and interaction type.', {
+      const response = await this.callGemini(prompt, {
         temperature: 0.5,
-        maxTokens: 400
+        maxTokens: 400,
+        responseFormat: 'json'
       });
 
       console.log('\n📥 RAW AI RESPONSE:');
       console.log(response.text);
 
-      // Parse JSON response with better error handling
-      let jsonString = response.text.trim();
-      
-      console.log('🔍 Step 1 - Raw response length:', jsonString.length);
-      
-      // Remove markdown code blocks - try multiple patterns
-      // Pattern 1: ```json ... ```
-      let jsonMatch = jsonString.match(/```json\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        jsonString = jsonMatch[1].trim();
-        console.log('✅ Extracted from ```json block');
-      } else {
-        // Pattern 2: ``` ... ```
-        jsonMatch = jsonString.match(/```\s*([\s\S]*?)```/);
-        if (jsonMatch) {
-          jsonString = jsonMatch[1].trim();
-          console.log('✅ Extracted from ``` block');
-        } else {
-          // Pattern 3: Remove surrounding backticks
-          jsonString = jsonString.replace(/^`+|`+$/g, '').trim();
-          console.log('✅ Removed surrounding backticks');
-        }
-      }
-      
-      console.log('🔍 Step 2 - After markdown removal:', jsonString.substring(0, 100));
-      
-      // Find JSON object boundaries
-      if (!jsonString.startsWith('{')) {
-        console.log('⚠️ String does not start with {, searching for JSON object...');
-        const jsonObjMatch = jsonString.match(/\{[\s\S]*\}/);
-        if (jsonObjMatch) {
-          jsonString = jsonObjMatch[0];
-          console.log('✅ Extracted JSON object from text');
-        }
-      }
-      
-      // Clean up any remaining issues
-      jsonString = jsonString
-        .replace(/^[^{]*/, '') // Remove anything before first {
-        .replace(/[^}]*$/, '') // Remove anything after last }
-        .trim();
-      
-      console.log('🔍 Step 3 - Final JSON string:', jsonString.substring(0, 150));
-      console.log('🔍 First char:', jsonString.charAt(0), 'Last char:', jsonString.charAt(jsonString.length - 1));
-
-      const result = JSON.parse(jsonString);
+      // Parse JSON response using universal parser
+      const result = this.parseJSON(response.text, 'unifiedInterviewResponse');
 
       // Validate and sanitize scores
       const validateScore = (score) => Math.min(100, Math.max(0, score || 50));
@@ -419,21 +364,21 @@ Keep it VERY brief (1-2 sentences max). Be professional and natural.`;
 
     } catch (error) {
       console.error('❌ Error in unified interview response:', error);
-      console.error('📋 Error name:', error.name);
-      console.error('📋 Error message:', error.message);
       
-      if (error instanceof SyntaxError && response?.text) {
-        console.error('🔴 JSON PARSING ERROR - Raw response was:');
-        console.error(response.text);
-        console.warn('⚠️ Falling back to simple conversational response...');
-        
-        // If AI didn't return JSON, treat the response as a direct conversational reply
-        // and generate moderate scores since we can't evaluate properly
-        return {
-          scores: {
-            communication: 60,
-            technical: 60,
-            overall: 60,
+      // Fallback response
+      return {
+        scores: {
+          communication: 60,
+          technical: 60,
+          overall: 60,
+          brief_feedback: 'AI response parsing failed'
+        },
+        response: "I see. Please continue with your solution.",
+        interactionType: 'conversation',
+        shouldScore: false
+      };
+    }
+  }
             brief_feedback: 'Conversational interaction'
           },
           response: response.text.trim().substring(0, 300), // Use AI's actual response
@@ -578,16 +523,19 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
     });
 
     try {
-      const response = await this.callGemini(prompt + '\n\nBe helpful but concise. 2-4 sentences maximum.', {
+      const response = await this.callGemini(prompt, {
         temperature: 0.7,
         maxTokens: 400,
-        systemInstruction: systemInstruction
+        systemInstruction: systemInstruction,
+        responseFormat: 'json'
       });
 
+      const parsed = this.parseJSON(response.text, 'generateHint');
+      
       return {
-        question: response.text,
-        type: response.metadata?.hintType || (actionType === 'chat' ? 'conversation' : 'guiding_question'),
-        followUp: response.metadata?.followUp
+        question: parsed.hint || parsed.response || response.text,
+        type: parsed.hintType || (actionType === 'chat' ? 'conversation' : 'guiding_question'),
+        followUp: parsed.followUp
       };
     } catch (error) {
       console.error('❌ Hint generation error:', error.message);
@@ -624,18 +572,24 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
       mode
     });
 
-    const response = await this.callGemini(prompt + '\n\nBe concise. Maximum 4 sentences.', {
+    // Add JSON format instruction
+    const jsonPrompt = prompt + '\n\n⚠️ Return ONLY valid JSON: {"reasoning": "<analysis>", "complexity": "<time/space>", "approach": "<description>", "questions": ["q1", "q2"]}';
+
+    const response = await this.callGemini(jsonPrompt, {
       temperature: 0.4,
       maxTokens: 400,
-      systemInstruction: GEMINI_PROMPTS.systemRules.explainWhyNotHow
+      systemInstruction: GEMINI_PROMPTS.systemRules.explainWhyNotHow,
+      responseFormat: 'json'
     });
 
+    const parsed = this.parseJSON(response.text, 'analyzeCode');
+
     return {
-      reasoning: response.text,
-      complexity: response.metadata?.complexity,
-      approach: response.metadata?.approach,
-      considerations: response.metadata?.considerations,
-      questions: response.metadata?.questions // Questions to ask user
+      reasoning: parsed.reasoning || response.text,
+      complexity: parsed.complexity,
+      approach: parsed.approach,
+      considerations: parsed.considerations,
+      questions: parsed.questions || []
     };
   }
 
@@ -654,16 +608,21 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
       weaknesses: context.userWeaknesses?.join(', ') || ''
     });
 
-    const response = await this.callGemini(prompt, {
+    const jsonPrompt = prompt + '\n\n⚠️ Return ONLY valid JSON: {"question": "<your question>", "focus": "<focus area>"}';
+
+    const response = await this.callGemini(jsonPrompt, {
       temperature: 0.8,
-      maxTokens: 400
+      maxTokens: 400,
+      responseFormat: 'json'
     });
 
+    const parsed = this.parseJSON(response.text, 'generatePhaseBasedInterviewQuestion');
+
     return {
-      question: response.text,
+      question: parsed.question || response.text,
       phase,
       timestamp: Date.now(),
-      expectedFocus: response.metadata?.focus
+      expectedFocus: parsed.focus
     };
   }
 
@@ -683,17 +642,20 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
 
     const response = await this.callGemini(prompt, {
       temperature: 0.3,
-      maxTokens: 400
+      maxTokens: 400,
+      responseFormat: 'json'
     });
 
+    const parsed = this.parseJSON(response.text, 'evaluateInterviewResponse');
+
     return {
-      score: response.metadata?.score || 50, // 0-100
-      strengths: response.metadata?.strengths || [],
-      weaknesses: response.metadata?.weaknesses || [],
-      clarity: response.metadata?.clarity || 50,
-      confidence: response.metadata?.confidence || 50,
-      technicalDepth: response.metadata?.technicalDepth || 50,
-      feedback: response.text
+      score: parsed.score || 50,
+      strengths: parsed.strengths || [],
+      weaknesses: parsed.weaknesses || [],
+      clarity: parsed.clarity || 50,
+      confidence: parsed.confidence || 50,
+      technicalDepth: parsed.technicalDepth || 50,
+      feedback: parsed.feedback || response.text
     };
   }
 
@@ -714,19 +676,22 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
 
     const response = await this.callGemini(prompt, {
       temperature: 0.5,
-      maxTokens: 400
+      maxTokens: 400,
+      responseFormat: 'json'
     });
 
+    const parsed = this.parseJSON(response.text, 'generateInterviewReport');
+
     return {
-      overallScore: response.metadata?.overallScore || 0,
-      problemSolving: response.metadata?.problemSolving || 0,
-      communication: response.metadata?.communication || 0,
-      technicalSkill: response.metadata?.technicalSkill || 0,
-      strengths: response.metadata?.strengths || [],
-      improvements: response.metadata?.improvements || [],
-      readinessLevel: response.metadata?.readinessLevel || 'beginner',
-      detailedFeedback: response.text,
-      nextSteps: response.metadata?.nextSteps || []
+      overallScore: parsed.overallScore || 0,
+      problemSolving: parsed.problemSolving || 0,
+      communication: parsed.communication || 0,
+      technicalSkill: parsed.technicalSkill || 0,
+      strengths: parsed.strengths || [],
+      improvements: parsed.improvements || [],
+      readinessLevel: parsed.readinessLevel || 'beginner',
+      detailedFeedback: parsed.detailedFeedback || response.text,
+      nextSteps: parsed.nextSteps || []
     };
   }
 
@@ -742,17 +707,20 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
       style
     });
 
-    const response = await this.callGemini(prompt + '\n\nBe concise and clear. Maximum 5 sentences.', {
+    const response = await this.callGemini(prompt, {
       temperature: 0.7,
-      maxTokens: 400
+      maxTokens: 400,
+      responseFormat: 'json'
     });
 
+    const parsed = this.parseJSON(response.text, 'explainConcept');
+
     return {
-      simpleExplanation: response.text,
-      mentalModel: response.metadata?.mentalModel,
-      analogy: response.metadata?.analogy,
-      whenToUse: response.metadata?.whenToUse,
-      commonMistakes: response.metadata?.commonMistakes
+      simpleExplanation: parsed.explanation || response.text,
+      mentalModel: parsed.mentalModel,
+      analogy: parsed.analogy,
+      whenToUse: parsed.whenToUse,
+      commonMistakes: parsed.commonMistakes || []
     };
   }
 
@@ -769,10 +737,12 @@ RESPOND NATURALLY to their question. If they're stuck, ask guiding questions. If
 
     const response = await this.callGemini(prompt, {
       temperature: 0.4,
-      maxTokens: 400
+      maxTokens: 400,
+      responseFormat: 'json'
     });
 
-    return response.metadata?.problems || [];
+    const parsed = this.parseJSON(response.text, 'findRelatedProblems');
+    return parsed.problems || [];
   }
 
   /**
@@ -893,6 +863,12 @@ Return ONLY a JSON object with this exact format:
       ]
     };
 
+    // Add JSON mode instruction if requested
+    if (options.responseFormat === 'json') {
+      // Gemini 2.0+ supports response_mime_type for JSON mode
+      requestBody.generationConfig.responseMimeType = 'application/json';
+    }
+
     // Add system instruction if provided
     if (options.systemInstruction) {
       requestBody.systemInstruction = {
@@ -934,12 +910,9 @@ Return ONLY a JSON object with this exact format:
       const data = await response.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-      // Try to extract JSON metadata if present
-      const metadata = this.extractMetadata(text);
-
+      // Return text directly - parseJSON will handle extraction if needed
       return {
-        text: text.replace(/```json[\s\S]*?```/g, '').trim(),
-        metadata,
+        text: text,
         raw: data
       };
 
@@ -962,29 +935,72 @@ Return ONLY a JSON object with this exact format:
     return prompt;
   }
 
-  // Helper: Extract JSON metadata from response
-  extractMetadata(text) {
-    const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
+  /**
+   * Universal JSON parser with multiple fallback strategies
+   * Handles various formats: plain JSON, markdown code blocks, mixed text
+   */
+  parseJSON(text, context = 'unknown') {
+    console.log(`🔍 Parsing JSON for context: ${context}`);
+    
+    let jsonString = text.trim();
+    
+    // Strategy 1: Try extracting from ```json ... ``` blocks
+    let jsonMatch = jsonString.match(/```json\s*([\s\S]*?)```/);
     if (jsonMatch) {
-      try {
-        return JSON.parse(jsonMatch[1]);
-      } catch (e) {
-        console.warn('Failed to parse metadata JSON:', e);
+      jsonString = jsonMatch[1].trim();
+      console.log('✅ Extracted from ```json block');
+    } else {
+      // Strategy 2: Try extracting from ``` ... ``` blocks without "json" tag
+      jsonMatch = jsonString.match(/```\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        jsonString = jsonMatch[1].trim();
+        console.log('✅ Extracted from ``` block');
+      } else {
+        // Strategy 3: Remove leading/trailing backticks
+        jsonString = jsonString.replace(/^`+|`+$/g, '').trim();
       }
     }
-    return null;
-  }
-
-  // Helper: Parse problem analysis response
-  parseAnalysis(response) {
-    return {
-      difficulty: response.metadata?.difficulty || 'medium',
-      topics: response.metadata?.topics || [],
-      patterns: response.metadata?.patterns || [],
-      estimatedTime: response.metadata?.estimatedTime || 30,
-      prerequisites: response.metadata?.prerequisites || [],
-      summary: response.text
-    };
+    
+    // Strategy 4: Find JSON object if embedded in text
+    if (!jsonString.startsWith('{')) {
+      const jsonObjMatch = jsonString.match(/\{[\s\S]*\}/);
+      if (jsonObjMatch) {
+        jsonString = jsonObjMatch[0];
+        console.log('✅ Extracted JSON object from text');
+      }
+    }
+    
+    // Strategy 5: Try to parse
+    try {
+      const parsed = JSON.parse(jsonString);
+      console.log('✅ Successfully parsed JSON');
+      return parsed;
+    } catch (error) {
+      console.error(`❌ JSON parse failed for ${context}:`, error.message);
+      console.error('Raw text:', text.substring(0, 200));
+      
+      // Last resort: return a safe default based on context
+      if (context === 'scoreInterviewAnswer') {
+        return {
+          communication: 50,
+          technical: 50,
+          overall: 50,
+          brief_feedback: 'Unable to parse AI response - using default scores'
+        };
+      } else if (context === 'analyzeProblem') {
+        return {
+          difficulty: 'medium',
+          topics: [],
+          patterns: [],
+          estimatedTime: 30,
+          prerequisites: [],
+          summary: 'Unable to parse analysis'
+        };
+      }
+      
+      // Generic fallback
+      return { error: 'Parse failed', raw: text.substring(0, 100) };
+    }
   }
 
   // Fallback analysis when API fails or no key configured

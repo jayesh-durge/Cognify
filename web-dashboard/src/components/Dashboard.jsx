@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getUserStats, getInterviewReports, getUserActivities, getProgressData, getUserProblems, getUserAnalytics, getTopicProficiency } from '../services/firebase'
-import { TrendingUp, Trophy, Target, Clock, Award, Brain, Activity, Zap, CheckCircle, Code } from 'lucide-react'
+import { TrendingUp, Trophy, Target, Clock, Award, Brain, Activity, Zap, CheckCircle, Code, Download, X } from 'lucide-react'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { useNavigate } from 'react-router-dom'
 
 export default function Dashboard() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [stats, setStats] = useState(null)
   const [recentInterviews, setRecentInterviews] = useState([])
   const [activities, setActivities] = useState([])
@@ -14,6 +16,7 @@ export default function Dashboard() {
   const [analytics, setAnalytics] = useState(null)
   const [topicData, setTopicData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [showExtensionBanner, setShowExtensionBanner] = useState(true)
 
   useEffect(() => {
     loadDashboardData()
@@ -84,6 +87,36 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Extension Download Banner */}
+      {showExtensionBanner && (
+        <div className="bg-gradient-to-r from-primary-500 to-purple-500 rounded-xl p-6 shadow-lg relative">
+          <button
+            onClick={() => setShowExtensionBanner(false)}
+            className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"
+          >
+            <X size={20} />
+          </button>
+          <div className="flex flex-col md:flex-row items-center gap-4">
+            <div className="flex-shrink-0">
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                <Download className="text-white" size={32} />
+              </div>
+            </div>
+            <div className="flex-1 text-center md:text-left">
+              <h3 className="text-xl font-bold text-white mb-1">Get Started with Cognify Extension</h3>
+              <p className="text-white/90">Download our Chrome extension to unlock AI-powered interview preparation on LeetCode, Codeforces & more!</p>
+            </div>
+            <button
+              onClick={() => navigate('/setup')}
+              className="bg-white text-primary-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100 transition-all transform hover:scale-105 flex items-center gap-2 whitespace-nowrap"
+            >
+              <Download size={20} />
+              Download Now
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-white">Welcome back, {user.displayName?.split(' ')[0]}! 👋</h1>

@@ -32,41 +32,25 @@ Make them think critically about their own code.`
   },
 
   // Problem analysis prompt
-  analyzeProblem: `Analyze this coding problem and provide structured insights for a learner:
+  analyzeProblem: `Analyze this coding problem and provide structured insights for a learner.
 
 **Problem:** {{title}}
+**Description:** {{description}}
+**Constraints:** {{constraints}}
+**Examples:** {{examples}}
 
-**Description:**
-{{description}}
+⚠️ CRITICAL: You MUST return ONLY a valid JSON object. No markdown code blocks, no extra text, no explanations outside the JSON.
 
-**Constraints:**
-{{constraints}}
-
-**Examples:**
-{{examples}}
-
-Provide your analysis in this format:
-
-**Core Challenge:** (What is the fundamental problem to solve?)
-
-**Key Topics:** (List 3-5 relevant CS topics/algorithms)
-
-**Thinking Approach:** (How should someone approach this problem? What questions should they ask?)
-
-**Common Traps:** (What mistakes do people typically make?)
-
-**Difficulty Assessment:** (Easy/Medium/Hard and why)
-
-Return JSON metadata:
-\`\`\`json
+Return ONLY this exact JSON structure:
 {
-  "difficulty": "medium",
-  "topics": ["arrays", "two-pointers"],
-  "patterns": ["sliding-window"],
-  "estimatedTime": 25,
-  "prerequisites": ["array basics", "space-time tradeoffs"]
-}
-\`\`\``,
+  "difficulty": "easy|medium|hard",
+  "topics": ["topic1", "topic2", "topic3"],
+  "patterns": ["pattern1", "pattern2"],
+  "estimatedTime": <number in minutes>,
+  "prerequisites": ["prereq1", "prereq2"],
+  "summary": "<2-3 sentence analysis of the core challenge and approach>",
+  "commonTraps": ["trap1", "trap2"]
+}`,
 
   // Practice mode hint generation - Act as a learning guide
   practiceHint: `You are an experienced coding mentor and teacher helping someone LEARN and understand a problem deeply. Your goal is to build their problem-solving skills, not just solve this one problem.
@@ -109,7 +93,14 @@ Return JSON metadata:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Provide your mentoring response (2-4 sentences that guide their learning):`,
+⚠️ CRITICAL: Return ONLY valid JSON. No markdown, no code blocks, no extra text.
+
+Return ONLY this exact JSON structure:
+{
+  "hint": "<2-4 sentences guiding their learning>",
+  "hintType": "question|concept|example|approach",
+  "confidence": <0-100, how confident they should be after this hint>
+}`,
 
   // Interview mode hint (stricter)
   interviewHint: `You are an interviewer. The candidate is stuck and needs a hint, but you want to see if they can figure it out with minimal help.
@@ -130,15 +121,14 @@ Provide a hint that:
 - Encourages them to verbalize their thought process
 - Is realistic for a real interview
 
-Keep it brief (1-2 sentences).
+⚠️ CRITICAL: Return ONLY valid JSON. No markdown, no code blocks, no extra text.
 
-Metadata:
-\`\`\`json
+Return ONLY this exact JSON structure:
 {
+  "hint": "<1-2 sentence hint>",
   "hintType": "nudge|redirect|clarification",
-  "followUp": "What you'd ask next"
-}
-\`\`\``,
+  "followUp": "<what you'd ask next>"
+}`,
 
   // Code analysis prompt
   analyzeCode: `Analyze this code attempt and provide reasoning-focused feedback.
@@ -244,15 +234,15 @@ Holistic assessment combining problem-solving ability, code quality, complexity 
 5. **USE FULL SCALE** - Great answers should score 80+, poor answers should score below 35
 6. **MATCH REAL INTERVIEWS** - Score as you would in an actual FAANG interview
 
-Return ONLY this JSON format:
-\`\`\`json
+⚠️ CRITICAL: You MUST return ONLY a valid JSON object. No markdown code blocks (no ```), no extra text before or after, no explanations.
+
+Return ONLY this exact JSON structure:
 {
   "communication": <integer 0-100>,
   "technical": <integer 0-100>,
   "overall": <integer 0-100>,
   "brief_feedback": "<concise feedback, 10-15 words max>"
-}
-\`\`\``,
+}`,
 
   // Interview mode conversational response (when not answering a question)
   interviewConversation: `Interviewer response to candidate.
@@ -261,8 +251,15 @@ Return ONLY this JSON format:
 **Status:** {{questions_asked}}/4 questions
 **Candidate:** "{{user_message}}"
 
-Respond naturally as interviewer. Be professional and conversational (1-2 complete sentences).
-`,
+Respond naturally as interviewer. Be professional and conversational.
+
+⚠️ CRITICAL: Return ONLY valid JSON. No markdown, no extra text.
+
+Return ONLY this exact JSON structure:
+{
+  "response": "<1-2 sentence professional interviewer response>"
+}`,
+
 
   // UNIFIED Interview mode: Score + Respond in one call
   unifiedInterviewResponse: `You are a professional technical interviewer at a FAANG company conducting a live coding interview. A candidate just communicated with you during the interview.
@@ -415,19 +412,18 @@ Also identify:
 - **Strengths:** What they did well
 - **Weaknesses:** What they should improve
 
-Provide brief feedback (3-4 sentences).
+⚠️ CRITICAL: Return ONLY valid JSON. No markdown, no code blocks, no extra text.
 
-Metadata:
-\`\`\`json
+Return ONLY this exact JSON structure:
 {
-  "score": 75,
-  "clarity": 80,
-  "confidence": 70,
-  "technicalDepth": 75,
-  "strengths": ["clear communication", "considered edge cases"],
-  "weaknesses": ["didn't discuss complexity", "missed optimization"]
-}
-\`\`\``,
+  "score": <0-100>,
+  "clarity": <0-100>,
+  "confidence": <0-100>,
+  "technicalDepth": <0-100>,
+  "strengths": ["strength1", "strength2"],
+  "weaknesses": ["weakness1", "weakness2"],
+  "feedback": "<3-4 sentence feedback>"
+}`,`,
 
   // Interview final report
   interviewReport: `Generate a comprehensive interview performance report.
@@ -456,19 +452,20 @@ Create a report with:
 6. **Detailed Feedback:** 2-3 paragraphs
 7. **Next Steps:** What should they focus on?
 
-Metadata:
-\`\`\`json
+⚠️ CRITICAL: Return ONLY valid JSON. No markdown, no code blocks, no extra text.
+
+Return ONLY this exact JSON structure:
 {
-  "overallScore": 75,
-  "problemSolving": 70,
-  "communication": 80,
-  "technicalSkill": 75,
-  "strengths": ["clear explanation", "good edge case thinking"],
-  "improvements": ["practice complexity analysis", "optimize solutions"],
-  "readinessLevel": "intermediate",
-  "nextSteps": ["Practice 10 medium array problems", "Study time complexity"]
-}
-\`\`\``,
+  "overallScore": <0-100>,
+  "problemSolving": <0-100>,
+  "communication": <0-100>,
+  "technicalSkill": <0-100>,
+  "strengths": ["strength1", "strength2"],
+  "improvements": ["improvement1", "improvement2"],
+  "readinessLevel": "beginner|intermediate|advanced|interview_ready",
+  "detailedFeedback": "<2-3 paragraphs>",
+  "nextSteps": ["step1", "step2"]
+}`,`,
 
   // Learning mode concept explanation
   explainConcept: `Explain this concept using simple mental models and analogies.
@@ -488,15 +485,16 @@ Provide:
 
 Make it intuitive, not formal.
 
-Metadata:
-\`\`\`json
+⚠️ CRITICAL: Return ONLY valid JSON. No markdown, no code blocks, no extra text.
+
+Return ONLY this exact JSON structure:
 {
-  "mentalModel": "Brief description",
-  "analogy": "Real-world comparison",
-  "whenToUse": "Problem types",
-  "commonMistakes": ["mistake 1", "mistake 2"]
-}
-\`\`\``,
+  "explanation": "<simple explanation>",
+  "mentalModel": "<mental model description>",
+  "analogy": "<real-world comparison>",
+  "whenToUse": "<problem types>",
+  "commonMistakes": ["mistake1", "mistake2"]
+}`,`,
 
   // Related problems for practice
   relatedProblems: `Find LeetCode/similar problems that apply this concept.
@@ -515,20 +513,20 @@ For each problem, suggest:
 - Why it's relevant
 - What variation it teaches
 
-Return as metadata:
-\`\`\`json
+⚠️ CRITICAL: Return ONLY valid JSON. No markdown, no code blocks, no extra text.
+
+Return ONLY this exact JSON structure:
 {
   "problems": [
     {
-      "title": "Two Sum",
+      "title": "Problem Name",
       "platform": "leetcode",
       "id": "1",
-      "difficulty": "easy",
-      "relevance": "Applies hash map concept directly"
+      "difficulty": "easy|medium|hard",
+      "relevance": "Why it's relevant"
     }
   ]
-}
-\`\`\``,
+}`,`,
 
   // Personalized recommendations
   recommendations: `Generate a personalized study plan based on user performance.
@@ -547,14 +545,15 @@ Create a study plan with:
 3. **Study Strategy:** How to approach learning
 4. **Time Estimate:** Weeks needed to reach proficiency
 
-Return detailed plan as text, and structured data as metadata:
-\`\`\`json
+⚠️ CRITICAL: Return ONLY valid JSON. No markdown, no code blocks, no extra text.
+
+Return ONLY this exact JSON structure:
 {
-  "topics": ["arrays", "dynamic programming"],
+  "topics": ["topic1", "topic2"],
   "problems": [
     {"title": "Problem Name", "difficulty": "medium", "reason": "Why this problem"}
   ],
-  "estimatedTime": 4
-}
-\`\`\``
+  "studyStrategy": "<detailed strategy>",
+  "estimatedTimeWeeks": <number>
+}``
 };

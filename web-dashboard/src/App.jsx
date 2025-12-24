@@ -7,6 +7,7 @@ import InterviewReports from './components/InterviewReports'
 import Progress from './components/Progress'
 import Login from './components/Login'
 import Settings from './components/Settings'
+import ExtensionSetup from './components/ExtensionSetup'
 
 function App() {
   return (
@@ -29,24 +30,61 @@ function AppRoutes() {
     )
   }
 
-  if (!user) {
-    return <Login />
-  }
-
+  // Setup page is accessible to everyone
   return (
-    <div className="min-h-screen bg-[#0f1419]">
-      <Navbar />
-      <main className="container mx-auto px-4 py-8 max-w-7xl">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/interviews" element={<InterviewReports />} />
-          <Route path="/progress" element={<Progress />} />
-          <Route path="/settings" element={<Settings />} />
+    <Routes>
+      <Route path="/setup" element={<ExtensionSetup />} />
+      
+      {!user ? (
+        <>
+          <Route path="*" element={<Login />} />
+        </>
+      ) : (
+        <>
+          <Route path="/" element={
+            <div className="min-h-screen bg-[#0f1419]">
+              <Navbar />
+              <main className="container mx-auto px-4 py-8 max-w-7xl">
+                <Dashboard />
+              </main>
+            </div>
+          } />
+          <Route path="/dashboard" element={
+            <div className="min-h-screen bg-[#0f1419]">
+              <Navbar />
+              <main className="container mx-auto px-4 py-8 max-w-7xl">
+                <Dashboard />
+              </main>
+            </div>
+          } />
+          <Route path="/interviews" element={
+            <div className="min-h-screen bg-[#0f1419]">
+              <Navbar />
+              <main className="container mx-auto px-4 py-8 max-w-7xl">
+                <InterviewReports />
+              </main>
+            </div>
+          } />
+          <Route path="/progress" element={
+            <div className="min-h-screen bg-[#0f1419]">
+              <Navbar />
+              <main className="container mx-auto px-4 py-8 max-w-7xl">
+                <Progress />
+              </main>
+            </div>
+          } />
+          <Route path="/settings" element={
+            <div className="min-h-screen bg-[#0f1419]">
+              <Navbar />
+              <main className="container mx-auto px-4 py-8 max-w-7xl">
+                <Settings />
+              </main>
+            </div>
+          } />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </main>
-    </div>
+        </>
+      )}
+    </Routes>
   )
 }
 
