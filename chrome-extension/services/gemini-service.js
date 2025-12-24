@@ -379,28 +379,24 @@ Keep it VERY brief (1-2 sentences max). Be professional and natural.
       };
     }
   }
-            brief_feedback: 'Conversational interaction'
-          },
-          response: response.text.trim().substring(0, 300), // Use AI's actual response
-          interactionType: 'conversation',
-          shouldScore: false
-        };
-      }
-      
-      // Complete fallback if no response at all
-      console.error('🔴 No response available, using hard fallback');
-      return {
-        scores: {
-          communication: 50,
-          technical: 50,
-          overall: 50,
-          brief_feedback: 'Unable to evaluate'
-        },
-        response: "I see. Can you elaborate on your approach?",
-        interactionType: 'conversation',
-        shouldScore: false
-      };
-    }
+
+  /**
+   * Fallback handler for interview responses
+   */
+  _getInterviewFallback() {
+    // Complete fallback if no response at all
+    console.error('🔴 No response available, using hard fallback');
+    return {
+      scores: {
+        communication: 50,
+        technical: 50,
+        overall: 50,
+        brief_feedback: 'Unable to evaluate'
+      },
+      response: "I see. Can you elaborate on your approach?",
+      interactionType: 'conversation',
+      shouldScore: false
+    };
   }
 
   /**

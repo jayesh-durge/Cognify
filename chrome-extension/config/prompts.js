@@ -234,7 +234,7 @@ Holistic assessment combining problem-solving ability, code quality, complexity 
 5. **USE FULL SCALE** - Great answers should score 80+, poor answers should score below 35
 6. **MATCH REAL INTERVIEWS** - Score as you would in an actual FAANG interview
 
-⚠️ CRITICAL: You MUST return ONLY a valid JSON object. No markdown code blocks (no ```), no extra text before or after, no explanations.
+CRITICAL: You MUST return ONLY a valid JSON object. No markdown code blocks, no extra text before or after, no explanations.
 
 Return ONLY this exact JSON structure:
 {
@@ -423,7 +423,7 @@ Return ONLY this exact JSON structure:
   "strengths": ["strength1", "strength2"],
   "weaknesses": ["weakness1", "weakness2"],
   "feedback": "<3-4 sentence feedback>"
-}`,`,
+}`,
 
   // Interview final report
   interviewReport: `Generate a comprehensive interview performance report.
@@ -465,7 +465,7 @@ Return ONLY this exact JSON structure:
   "readinessLevel": "beginner|intermediate|advanced|interview_ready",
   "detailedFeedback": "<2-3 paragraphs>",
   "nextSteps": ["step1", "step2"]
-}`,`,
+}`,
 
   // Learning mode concept explanation
   explainConcept: `Explain this concept using simple mental models and analogies.
@@ -494,7 +494,7 @@ Return ONLY this exact JSON structure:
   "analogy": "<real-world comparison>",
   "whenToUse": "<problem types>",
   "commonMistakes": ["mistake1", "mistake2"]
-}`,`,
+}`,
 
   // Related problems for practice
   relatedProblems: `Find LeetCode/similar problems that apply this concept.
@@ -526,7 +526,7 @@ Return ONLY this exact JSON structure:
       "relevance": "Why it's relevant"
     }
   ]
-}`,`,
+}`,
 
   // Personalized recommendations
   recommendations: `Generate a personalized study plan based on user performance.
@@ -555,5 +555,5 @@ Return ONLY this exact JSON structure:
   ],
   "studyStrategy": "<detailed strategy>",
   "estimatedTimeWeeks": <number>
-}``
+}`
 };
