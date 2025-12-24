@@ -277,4 +277,5 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     currentSession = message.session;
     updateUI();
   }
+  return true; // Keep message channel open
 });

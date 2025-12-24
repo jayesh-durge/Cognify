@@ -769,16 +769,12 @@ Return ONLY a JSON object with this exact format:
     try {
       const response = await this.callGemini(prompt, {
         temperature: 0.3,
-        maxTokens: 400
+        maxTokens: 400,
+        responseFormat: 'json'
       });
 
-      let jsonString = response.text.trim();
-      const jsonMatch = jsonString.match(/```json\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        jsonString = jsonMatch[1].trim();
-      }
-      
-      const result = JSON.parse(jsonString);
+      // Use the universal parseJSON helper instead of manual parsing
+      const result = this.parseJSON(response.text, 'analyzeTopicProficiency');
       return result.topicClassifications || [];
     } catch (error) {
       console.error('❌ Error analyzing topic proficiency:', error);

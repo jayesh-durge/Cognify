@@ -106,7 +106,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 });
 
 // Listen for storage changes to reload API key and user auth
-chrome.storage.onChanged.addListener((changes, area) => {
+chrome.storage.onChanged.addListener(async (changes, area) => {
   if (area === 'local') {
     if (changes.gemini_api_key) {
       console.log('🔄 API key changed, reloading...');
@@ -114,13 +114,20 @@ chrome.storage.onChanged.addListener((changes, area) => {
     }
     
     // CRITICAL: Update firebaseService userId when user signs in/out
-    if (changes.user_id) {
-      const newUserId = changes.user_id.newValue;
+    if (changes.user_id || changes.auth_token) {
+      const newUserId = changes.user_id?.newValue;
+      const newToken = changes.auth_token?.newValue;
+      
       console.log('🔄 User authentication changed:', newUserId ? `User: ${newUserId}` : 'Signed out');
+      console.log('🔑 Auth token', newToken ? 'updated' : 'cleared');
+      
+      // Reinitialize Firebase service with new credentials
       firebaseService.userId = newUserId || null;
+      await firebaseService.init();
       
       if (newUserId) {
-        console.log('✅ Firebase service now has userId:', newUserId);
+        console.log('✅ Firebase service reinitialized with userId:', newUserId);
+        console.log('🔥 Firebase is now ready to write data');
       } else {
         console.log('⚠️ Firebase service userId cleared (user signed out)');
       }
@@ -180,6 +187,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       switch (message.type) {
         case 'CHECK_AUTH':
           return await requireAuth();
+        
+        case 'DEBUG_AUTH':
+          // Debug authentication status - for troubleshooting
+          return await firebaseService.debugAuthStatus();
         
         case 'COGNIFY_AUTH':
           // Handle auth sync from dashboard (via content script bridge)

@@ -15,8 +15,8 @@ export class FirebaseService {
 
   async init() {
     // Get user ID and Firebase config from storage
-    const result = await chrome.storage.local.get(['user_id', 'firebase_config']);
-    this.userId = result.user_id;
+    const result = await chrome.storage.local.get(['user_id', 'firebase_config', 'auth_token']);
+    this.userId = result.user_id || null;
     this.firebaseConfig = result.firebase_config;
     
     if (!this.firebaseConfig) {
@@ -34,7 +34,14 @@ export class FirebaseService {
     }
     
     this.initialized = true;
-    console.log('✅ Firebase service initialized', this.userId ? 'with user' : 'anonymous');
+    
+    if (this.userId) {
+      console.log('✅ Firebase service initialized with authenticated user:', this.userId);
+      console.log('🔑 Auth token available:', !!result.auth_token);
+    } else {
+      console.log('⚠️ Firebase service initialized in anonymous mode (no user authenticated)');
+      console.log('💡 User must sign in at: https://cognify-68642.web.app/');
+    }
   }
 
   /**
@@ -417,9 +424,21 @@ export class FirebaseService {
    * Write data to Firestore using REST API
    */
   async writeToFirestore(path, data) {
+    // Ensure we have the latest userId
+    if (!this.userId) {
+      const result = await chrome.storage.local.get(['user_id']);
+      this.userId = result.user_id;
+    }
+    
+    if (!this.userId) {
+      console.error('❌ CRITICAL: No userId available for Firestore write');
+      throw new Error('User not authenticated. Please sign in on the dashboard.');
+    }
+    
     const url = `https://firestore.googleapis.com/v1/projects/${this.firebaseConfig.projectId}/databases/(default)/documents/${path}`;
     
     console.log('🌐 Firestore REST API URL:', url);
+    console.log('👤 Writing as user:', this.userId);
     
     // Get auth token
     const authToken = await this.getAuthToken();
@@ -432,32 +451,51 @@ export class FirebaseService {
       'Content-Type': 'application/json'
     };
     
-    // Add auth token if available
+    // Add auth token if available - CRITICAL for Firestore security rules
     if (authToken) {
       headers['Authorization'] = `Bearer ${authToken}`;
+      console.log('✅ Authorization header set');
+    } else {
+      console.warn('⚠️ WARNING: No auth token - write may fail due to security rules');
     }
     
     console.log('📤 Sending PATCH request to Firestore...');
+    console.log('📦 Data size:', JSON.stringify(firestoreData).length, 'bytes');
     
-    const response = await fetch(url, {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify({ fields: firestoreData })
-    });
+    try {
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ fields: firestoreData })
+      });
 
-    console.log('📥 Response status:', response.status, response.statusText);
+      console.log('📥 Response status:', response.status, response.statusText);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Firestore write error:', errorText);
-      console.error('❌ Response status:', response.status);
-      console.error('❌ Response headers:', Object.fromEntries(response.headers.entries()));
-      throw new Error(`Firestore write failed: ${response.statusText} - ${errorText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Firestore write error:', errorText);
+        console.error('❌ Response status:', response.status);
+        console.error('❌ Response headers:', Object.fromEntries(response.headers.entries()));
+        console.error('❌ Request URL:', url);
+        console.error('❌ Auth token present:', !!authToken);
+        
+        // Provide helpful error messages
+        if (response.status === 401 || response.status === 403) {
+          throw new Error('Authentication failed. Please sign in again on the dashboard (https://cognify-68642.web.app/)');
+        } else if (response.status === 404) {
+          throw new Error('Firestore path not found. This may be a configuration issue.');
+        }
+        
+        throw new Error(`Firestore write failed (${response.status}): ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Firestore write successful!');
+      return result;
+    } catch (error) {
+      console.error('❌ Network error during Firestore write:', error);
+      throw error;
     }
-
-    const result = await response.json();
-    console.log('✅ Firestore write successful!');
-    return result;
   }
 
   /**
@@ -466,10 +504,25 @@ export class FirebaseService {
   async readFromFirestore(path) {
     const url = `https://firestore.googleapis.com/v1/projects/${this.firebaseConfig.projectId}/databases/(default)/documents/${path}`;
     
-    const response = await fetch(url);
+    // Get auth token for authenticated reads
+    const authToken = await this.getAuthToken();
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    
+    const response = await fetch(url, { headers });
     
     if (!response.ok) {
       if (response.status === 404) return null;
+      if (response.status === 401 || response.status === 403) {
+        console.error('❌ Firestore read failed: Authentication required');
+        return null;
+      }
+      console.error('❌ Firestore read failed:', response.status, response.statusText);
       throw new Error(`Firestore read failed: ${response.statusText}`);
     }
 
@@ -488,7 +541,18 @@ export class FirebaseService {
       if (typeof value === 'string') {
         result[key] = { stringValue: value };
       } else if (typeof value === 'number') {
-        result[key] = { integerValue: Math.floor(value) };
+        // Handle special number values
+        if (!isFinite(value)) {
+          // Convert NaN, Infinity, -Infinity to string to avoid Firestore errors
+          result[key] = { stringValue: String(value) };
+          console.warn(`⚠️ Special number value converted to string: ${key}=${value}`);
+        } else if (Number.isInteger(value)) {
+          // Use integerValue for whole numbers (includes timestamps)
+          result[key] = { integerValue: value };
+        } else {
+          // Use doubleValue for decimals
+          result[key] = { doubleValue: value };
+        }
       } else if (typeof value === 'boolean') {
         result[key] = { booleanValue: value };
       } else if (Array.isArray(value)) {
@@ -499,7 +563,14 @@ export class FirebaseService {
               if (typeof v === 'string') {
                 return { stringValue: v };
               } else if (typeof v === 'number') {
-                return { integerValue: Math.floor(v) };
+                // Handle special values in arrays too
+                if (!isFinite(v)) {
+                  return { stringValue: String(v) };
+                } else if (Number.isInteger(v)) {
+                  return { integerValue: v };
+                } else {
+                  return { doubleValue: v };
+                }
               } else if (typeof v === 'boolean') {
                 return { booleanValue: v };
               } else if (typeof v === 'object' && v !== null) {
@@ -529,6 +600,8 @@ export class FirebaseService {
         result[key] = value.stringValue;
       } else if (value.integerValue !== undefined) {
         result[key] = parseInt(value.integerValue);
+      } else if (value.doubleValue !== undefined) {
+        result[key] = parseFloat(value.doubleValue);
       } else if (value.booleanValue !== undefined) {
         result[key] = value.booleanValue;
       } else if (value.arrayValue) {
@@ -536,6 +609,7 @@ export class FirebaseService {
           // Handle different types in array values
           if (v.stringValue !== undefined) return v.stringValue;
           if (v.integerValue !== undefined) return parseInt(v.integerValue);
+          if (v.doubleValue !== undefined) return parseFloat(v.doubleValue);
           if (v.booleanValue !== undefined) return v.booleanValue;
           if (v.mapValue) return this.fromFirestoreFormat(v.mapValue.fields);
           return null;
@@ -622,6 +696,27 @@ export class FirebaseService {
    */
   isAuthenticated() {
     return !!this.userId;
+  }
+
+  /**
+   * Debug helper - Check authentication status
+   */
+  async debugAuthStatus() {
+    const result = await chrome.storage.local.get(['user_id', 'auth_token', 'user_profile']);
+    
+    const status = {
+      isAuthenticated: !!result.user_id,
+      userId: result.user_id || null,
+      hasAuthToken: !!result.auth_token,
+      tokenLength: result.auth_token ? result.auth_token.length : 0,
+      userProfile: result.user_profile || null,
+      firebaseServiceUserId: this.userId,
+      firebaseConfigLoaded: !!this.firebaseConfig,
+      projectId: this.firebaseConfig?.projectId || 'NOT SET'
+    };
+    
+    console.log('🔍 Firebase Auth Debug Status:', status);
+    return status;
   }
 
   /**

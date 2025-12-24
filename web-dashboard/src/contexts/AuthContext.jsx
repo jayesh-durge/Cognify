@@ -19,7 +19,8 @@ export function AuthProvider({ children }) {
       
       // Sync auth to extension if logged in
       if (user) {
-        const token = await user.getIdToken()
+        // Force refresh to get a fresh token
+        const token = await user.getIdToken(true)
         
         // Post message to window (extension will listen)
         window.postMessage({
